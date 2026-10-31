@@ -1,41 +1,40 @@
-import React from 'react';
-import { Dots, Modal } from './ui';
+import React, { useRef } from 'react';
+import { Cog } from 'lucide-react';
+import { Modal } from './ui';
+import { gsap, reducedMotion, useGSAP } from '../lib/motion';
 
 interface LoadingModalProps {
   visible: boolean;
   message: string;
 }
 
+/** Blocking progress dialog while a bot is validated and deployed. */
 export const LoadingModal: React.FC<LoadingModalProps> = ({ visible, message }) => {
-  // No onRequestClose: like the RN version, it can't be dismissed while running.
+  const scope = useRef<HTMLDivElement>(null);
+
+  useGSAP(
+    () => {
+      if (!visible || reducedMotion()) return;
+      gsap.to('[data-gear="a"]', { rotation: 360, duration: 3, repeat: -1, ease: 'none' });
+      gsap.to('[data-gear="b"]', { rotation: -360, duration: 2, repeat: -1, ease: 'none' });
+    },
+    { scope, dependencies: [visible], revertOnUpdate: true },
+  );
+
   return (
-    <Modal visible={visible}>
-      <div className="relative overflow-hidden rounded-3xl bg-white px-6 py-8 text-center shadow-2xl">
-        <div className="absolute -right-10 -top-10 size-32 rounded-full border-8 border-primary/10" />
-        <div className="absolute -bottom-12 -left-12 size-36 rounded-full border-8 border-success/10" />
-
-        <div className="relative mx-auto mb-5 flex size-24 items-center justify-center">
-          <span className="absolute inset-0 animate-spin text-6xl leading-24" style={{ animationDuration: '3s' }}>
-            ⚙️
-          </span>
-          <span className="relative flex size-12 items-center justify-center rounded-full bg-white text-3xl shadow">
-            🤖
-          </span>
+    <Modal visible={visible} dismissible={false} variant="center" labelledBy="loading-title">
+      <div ref={scope} className="rounded-2xl bg-panel px-6 py-7 shadow-xl">
+        <div aria-hidden className="relative mb-4 h-14 w-20 text-ink">
+          <Cog data-gear="a" size={56} strokeWidth={1.6} className="absolute left-0 top-0" />
+          <Cog data-gear="b" size={34} strokeWidth={1.8} className="absolute bottom-0 right-0 text-signal-deep" />
         </div>
-
-        <h2 className="relative text-xl font-bold text-ink">Executing Bot</h2>
-        <p className="relative mt-1 min-h-6 text-primary">{message}</p>
-
-        <div className="relative mt-5">
-          <div className="h-2 overflow-hidden rounded-full bg-line">
-            <div className="h-full rounded-full bg-gradient-to-r from-primary to-success animate-progress" />
-          </div>
-          <div className="mt-2 flex items-center justify-center gap-2 text-xs text-muted">
-            Processing <Dots className="bg-muted" />
-          </div>
-        </div>
-
-        <p className="relative mt-4 text-xs text-muted">Please wait while the request is being processed</p>
+        <h2 id="loading-title" className="font-display text-2xl font-bold text-ink">
+          Launching bot
+        </h2>
+        {/* Announced to screen readers as each step changes. */}
+        <p role="status" className="mt-1 min-h-6 text-steel">
+          {message}
+        </p>
       </div>
     </Modal>
   );

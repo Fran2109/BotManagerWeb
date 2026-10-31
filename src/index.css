@@ -1,60 +1,28 @@
 @import "tailwindcss";
 
+/* Industrial control panel: machine-grey enamel, slate ink, signal yellow for the one
+   action that launches a robot, and indicator-lamp colors for state. */
 @theme {
-  --color-primary: #007bff;
-  --color-primary-dark: #0062cc;
-  --color-success: #28a745;
-  --color-danger: #dc3545;
-  --color-warning: #ffc107;
-  --color-ink: #343a40;
-  --color-ink-soft: #495057;
-  --color-muted: #6c757d;
-  --color-line: #e9ecef;
-  --color-surface: #f8f9fa;
+  --font-sans: "Barlow", system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Barlow", system-ui, sans-serif;
 
-  --animate-fade-in: fade-in 0.25s ease-out both;
-  --animate-pop-in: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  --animate-slide-up: slide-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-slide-in: slide-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-shake: shake 0.4s ease-in-out 0.3s both;
-  --animate-float: float 3s ease-in-out infinite;
-  --animate-dot: dot 1.2s ease-in-out infinite;
-  --animate-progress: progress 2s ease-in-out infinite;
+  --color-enamel: #e4e6e1;
+  --color-panel: #f5f6f2;
+  --color-ink: #1f2a30;
+  --color-ink-soft: #3b474e;
+  --color-steel: #626d73;
+  --color-line: #cdd1cb;
+  --color-signal: #f2b705;
+  --color-signal-deep: #b88a00;
+  --color-go: #1f9d55;
+  --color-stop: #d2382b;
+  --color-amber: #e08a00;
 
-  @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  @keyframes pop-in {
-    from { opacity: 0; transform: scale(0.85); }
-    to { opacity: 1; transform: scale(1); }
-  }
-  @keyframes slide-up {
-    from { opacity: 0; transform: translateY(40px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes slide-in {
-    from { opacity: 0; transform: translateX(40px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-  @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-8px); }
-    50% { transform: translateX(8px); }
-    75% { transform: translateX(-4px); }
-  }
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-14px); }
-  }
-  @keyframes dot {
-    0%, 100% { opacity: 0.25; transform: scale(0.6); }
-    50% { opacity: 1; transform: scale(1); }
-  }
-  @keyframes progress {
-    0% { width: 0%; }
-    70% { width: 100%; }
-    100% { width: 100%; opacity: 0; }
+  --animate-lamp-wait: lamp-wait 1.2s ease-in-out infinite;
+
+  @keyframes lamp-wait {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
   }
 }
 
@@ -66,9 +34,10 @@ body,
 
 body {
   margin: 0;
-  background: var(--color-surface);
+  background: var(--color-enamel);
   color: var(--color-ink);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum" 1;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
 }
@@ -79,6 +48,11 @@ button {
 
 button:disabled {
   cursor: default;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-signal);
+  outline-offset: 2px;
 }
 
 .safe-top {
@@ -97,9 +71,134 @@ button:disabled {
   scrollbar-width: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
+/* Indicator lamp: the state of an account, device or execution. */
+.lamp {
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: #9aa3a7;
+  box-shadow: inset 0 -1px 1px rgb(0 0 0 / 0.25);
+}
+
+.lamp[data-state="on"] {
+  background: var(--color-go);
+  box-shadow: 0 0 0 3px rgb(31 157 85 / 0.18), 0 0 8px rgb(31 157 85 / 0.6);
+}
+
+.lamp[data-state="off"] {
+  background: var(--color-stop);
+  box-shadow: 0 0 0 3px rgb(210 56 43 / 0.14);
+}
+
+.lamp[data-state="wait"] {
+  background: var(--color-amber);
+  box-shadow: 0 0 0 3px rgb(224 138 0 / 0.16);
+  animation: var(--animate-lamp-wait);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
   }
+}
+
+/* The run control: a physical yellow push-button in a dark bezel. */
+.push-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: var(--color-ink);
+  background: radial-gradient(circle at 35% 30%, #ffd84d, var(--color-signal) 62%);
+  box-shadow:
+    0 0 0 3px var(--color-ink),
+    0 4px 0 3px var(--color-ink),
+    inset 0 -3px 0 rgb(0 0 0 / 0.14);
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out;
+}
+
+.push-button:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow:
+    0 0 0 3px var(--color-ink),
+    0 1px 0 3px var(--color-ink),
+    inset 0 -1px 0 rgb(0 0 0 / 0.14);
+}
+
+.push-button:disabled {
+  background: #c9ccc6;
+  color: var(--color-steel);
+}
+
+/* Native <dialog> (see components/ui.tsx). */
+dialog {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  max-width: none;
+  max-height: none;
+}
+
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: rgb(31 42 48 / 0.55);
+}
+
+dialog[open]::backdrop {
+  animation: backdrop-in 0.2s ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes backdrop-in {
+  from { opacity: 0; }
+}
+
+dialog.dialog-sheet {
+  width: 100%;
+  max-width: 32rem;
+  max-height: 92dvh;
+  margin: auto auto 0;
+}
+
+dialog.dialog-center {
+  width: calc(100% - 2.5rem);
+  max-width: 22rem;
+  margin: auto;
+}
+
+dialog.dialog-page {
+  width: 100%;
+  height: 100%;
+  max-height: 100dvh;
+  margin: 0;
+}
+
+/* <input type="checkbox" switch>: native in Safari, polyfilled elsewhere (main.tsx). */
+input[type="checkbox"][switch] {
+  accent-color: var(--color-go);
+  margin: 0;
+  cursor: pointer;
+}
+
+input[type="checkbox"][switch]:focus-visible {
+  outline: 3px solid var(--color-signal);
+  outline-offset: 4px;
+}
+
+/* Hide switches briefly while the polyfill loads, to avoid a flash of plain checkboxes. */
+@keyframes hide-briefly {
+  0%, 100% { visibility: hidden; }
+}
+
+html:not(.switch-ready) input[switch] {
+  animation: hide-briefly 1s;
 }

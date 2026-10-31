@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Menu, X } from 'lucide-react';
 import logo from '../assets/Logo.jpg';
 import { useDrawer } from '../navigation/drawerContext';
 import { BreadcrumbItem } from './Breadcrumb';
@@ -9,47 +9,36 @@ interface HeaderProps {
   onBackPress?: () => void;
 }
 
-const HamburgerIcon: React.FC<{ open: boolean }> = ({ open }) => (
-  <span className="relative block h-4 w-5">
-    <span
-      className={`absolute left-0 h-0.5 w-5 rounded bg-ink transition-all duration-300 ${
-        open ? 'top-1.5 rotate-45' : 'top-0'
-      }`}
-    />
-    <span
-      className={`absolute left-0 top-1.5 h-0.5 w-5 rounded bg-ink transition-opacity duration-300 ${
-        open ? 'opacity-0' : 'opacity-100'
-      }`}
-    />
-    <span
-      className={`absolute left-0 h-0.5 w-5 rounded bg-ink transition-all duration-300 ${
-        open ? 'top-1.5 -rotate-45' : 'top-3'
-      }`}
-    />
-  </span>
-);
-
 export const Header: React.FC<HeaderProps> = ({ currentPath, onBackPress }) => {
   const { isDrawerOpen, toggleDrawer } = useDrawer();
   const isInSubfolder = !!currentPath && currentPath.length > 1;
 
   return (
-    <header className="flex items-center border-b border-line bg-white px-4 py-3 shadow-sm safe-top">
-      <button
-        className="flex size-11 items-center justify-center rounded-xl bg-surface transition active:scale-95"
-        onClick={isInSubfolder ? onBackPress : toggleDrawer}
-        aria-label={isInSubfolder ? 'Back' : 'Menu'}
-      >
-        {isInSubfolder ? <ArrowLeft size={22} className="text-ink" /> : <HamburgerIcon open={isDrawerOpen} />}
-      </button>
-
-      <div className="flex flex-1 flex-col items-center">
-        <img src={logo} alt="" className="mb-1 size-9 rounded-lg object-contain" />
-        <h1 className="text-base font-bold leading-tight text-ink">Bot Manager</h1>
-        <p className="text-xs text-muted">Automation Anywhere</p>
+    <header className="bg-ink text-panel safe-top">
+      <div className="flex items-center gap-3 px-3 py-2.5">
+        <button
+          className="flex size-11 items-center justify-center rounded-lg active:bg-white/10"
+          onClick={isInSubfolder ? onBackPress : toggleDrawer}
+          aria-label={isInSubfolder ? 'Back to parent folder' : isDrawerOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={isInSubfolder ? undefined : isDrawerOpen}
+        >
+          {isInSubfolder ? <ArrowLeft size={24} /> : isDrawerOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+        <img src={logo} alt="" className="size-8 rounded-md bg-white object-contain p-0.5" />
+        <div className="min-w-0">
+          <p className="font-display text-lg font-bold leading-tight">Bot Manager</p>
+          <p className="text-xs text-panel/60">Automation Anywhere</p>
+        </div>
       </div>
-
-      <div className="size-11" />
+      {/* Hazard-stripe edge: the one decorative nod to the machine-panel theme. */}
+      <div
+        aria-hidden
+        className="h-1.5"
+        style={{
+          background:
+            'repeating-linear-gradient(-45deg, var(--color-signal) 0 10px, var(--color-ink) 10px 20px)',
+        }}
+      />
     </header>
   );
 };

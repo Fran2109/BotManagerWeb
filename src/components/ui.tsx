@@ -1,163 +1,336 @@
-import React, { useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { RotateCw, TriangleAlert } from 'lucide-react';
 import { useBackHandler } from '../navigation/backHandler';
+import { gsap, motionDuration, useGSAP } from '../lib/motion';
 
 // Shared building blocks that replace React Native's Modal, ActivityIndicator and Switch.
 
+type ModalVariant = 'sheet' | 'center' | 'page';
+
 interface ModalProps {
   visible: boolean;
+  /** Called on Esc, back gesture/button and (when dismissible) a tap outside. */
   onRequestClose?: () => void;
+  /** false = only the app can close it (e.g. while a bot is being launched). */
+  dismissible?: boolean;
+  variant?: ModalVariant;
+  /** Accessible name: id of the dialog's heading, or a label when there is none. */
+  labelledBy?: string;
+  label?: string;
   children: React.ReactNode;
-  /** 'center' = dialog card, 'sheet' = full-height page sheet. */
-  variant?: 'center' | 'sheet';
 }
 
-export const Modal: React.FC<ModalProps> = ({ visible, onRequestClose, children, variant = 'center' }) => {
-  // Android back button closes the top-most modal, like RN's onRequestClose.
-  useBackHandler(
-    () => {
-      onRequestClose?.();
-      return true;
-    },
-    visible,
-  );
+const ENTER_FROM: Record<ModalVariant, gsap.TweenVars> = {
+  sheet: { yPercent: 100 },
+  center: { scale: 0.92, opacity: 0 },
+  page: { yPercent: 6, opacity: 0 },
+};
+
+const supportsClosedBy = typeof HTMLDialogElement !== 'undefined' && 'closedBy' in HTMLDialogElement.prototype;
+
+/**
+ * Native modal <dialog> opened with showModal(): the browser provides the top layer,
+ * inert page, focus containment and focus return. Visibility stays controlled by
+ * React; close requests are routed through onRequestClose.
+ */
+export const Modal: React.FC<ModalProps> = ({
+  visible,
+  onRequestClose,
+  dismissible = true,
+  variant = 'sheet',
+  labelledBy,
+  label,
+  children,
+}) => {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [mounted, setMounted] = useState(visible);
+  const requestClose = useRef(onRequestClose);
+  requestClose.current = onRequestClose;
+
+  if (visible && !mounted) setMounted(true);
+
+  // Android hardware back button (Capacitor doesn't turn it into a dialog cancel).
+  useBackHandler(() => {
+    if (dismissible) requestClose.current?.();
+    return true;
+  }, visible);
+
+  useLayoutEffect(() => {
+    const dialog = ref.current;
+    if (!dialog || !mounted) return;
+
+    if (visible) {
+      if (!dialog.open) {
+        dialog.showModal();
+        // React doesn't render the autofocus attribute (it calls focus() on mount, before
+        // showModal() runs), so mark the initial control with data-autofocus instead.
+        dialog.querySelector<HTMLElement>('[data-autofocus]')?.focus();
+      }
+      gsap.fromTo(
+        dialog,
+        ENTER_FROM[variant],
+        {
+          yPercent: 0,
+          scale: 1,
+          opacity: 1,
+          duration: motionDuration(variant === 'sheet' ? 0.38 : 0.24),
+          ease: variant === 'sheet' ? 'power3.out' : 'back.out(1.6)',
+        },
+      );
+    } else if (dialog.open) {
+      gsap.to(dialog, {
+        ...ENTER_FROM[variant],
+        duration: motionDuration(0.2),
+        ease: 'power2.in',
+        onComplete: () => {
+          dialog.close();
+          setMounted(false);
+        },
+      });
+    } else {
+      setMounted(false);
+    }
+  }, [visible, mounted, variant]);
 
   useEffect(() => {
-    if (!visible) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
+    const dialog = ref.current;
+    if (!dialog || !mounted) return;
+
+    // Esc / back gesture: keep the dialog open and let React decide.
+    const onCancel = (e: Event) => {
+      e.preventDefault();
+      if (dismissible) requestClose.current?.();
     };
-  }, [visible]);
+    // The browser may still close it (e.g. repeated Esc); keep React in sync.
+    const onClose = () => {
+      if (!visible) return;
+      if (dismissible) requestClose.current?.();
+      else dialog.showModal();
+    };
+    dialog.addEventListener('cancel', onCancel);
+    dialog.addEventListener('close', onClose);
 
-  if (!visible) return null;
+    // Light-dismiss fallback where closedby isn't supported: press and release outside.
+    let pressedOutside = false;
+    const outside = (e: PointerEvent) => {
+      const r = dialog.getBoundingClientRect();
+      return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+    };
+    const onDown = (e: PointerEvent) => {
+      pressedOutside = outside(e);
+    };
+    const onUp = (e: PointerEvent) => {
+      if (pressedOutside && outside(e)) requestClose.current?.();
+    };
+    const useFallback = dismissible && !supportsClosedBy;
+    if (useFallback) {
+      dialog.addEventListener('pointerdown', onDown);
+      dialog.addEventListener('pointerup', onUp);
+    }
 
-  if (variant === 'sheet') {
-    return createPortal(
-      <div className="fixed inset-0 z-50 flex flex-col bg-surface animate-slide-up safe-top safe-bottom">
-        {children}
-      </div>,
-      document.body,
-    );
-  }
+    return () => {
+      dialog.removeEventListener('cancel', onCancel);
+      dialog.removeEventListener('close', onClose);
+      if (useFallback) {
+        dialog.removeEventListener('pointerdown', onDown);
+        dialog.removeEventListener('pointerup', onUp);
+      }
+    };
+  }, [mounted, visible, dismissible]);
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-5 animate-fade-in safe-top safe-bottom">
-      <div className="w-full max-w-md animate-pop-in">{children}</div>
-    </div>,
-    document.body,
+  if (!mounted) return null;
+
+  return (
+    <dialog
+      ref={ref}
+      className={`dialog-${variant}`}
+      aria-labelledby={labelledBy}
+      aria-label={labelledBy ? undefined : label}
+      {...{ closedby: dismissible ? 'any' : 'none' }}
+    >
+      {children}
+    </dialog>
   );
 };
 
-export const Spinner: React.FC<{ className?: string; color?: string }> = ({
+/** Bottom-sheet surface used inside <Modal variant="sheet">. */
+export const Sheet: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+  <div className={`flex max-h-[92dvh] flex-col overflow-y-auto rounded-t-2xl bg-panel safe-bottom ${className}`}>
+    <span aria-hidden className="mx-auto mb-1 mt-2.5 h-1 w-10 shrink-0 rounded-full bg-line" />
+    {children}
+  </div>
+);
+
+export const Spinner: React.FC<{ className?: string; color?: string; label?: string }> = ({
   className = 'size-5',
   color = 'currentColor',
+  label,
 }) => (
   <span
-    role="status"
-    aria-label="Loading"
-    className={`inline-block animate-spin rounded-full border-2 border-t-transparent ${className}`}
+    role={label ? 'status' : undefined}
+    aria-label={label}
+    aria-hidden={label ? undefined : true}
+    className={`inline-block animate-spin rounded-full border-2 motion-reduce:animate-none motion-reduce:opacity-60 ${className}`}
     style={{ borderColor: color, borderTopColor: 'transparent' }}
   />
 );
 
-export const Dots: React.FC<{ className?: string }> = ({ className = 'bg-primary' }) => (
-  <span className="inline-flex items-center gap-1">
-    {[0, 150, 300].map(delay => (
-      <span
-        key={delay}
-        className={`size-2 rounded-full animate-dot ${className}`}
-        style={{ animationDelay: `${delay}ms` }}
-      />
-    ))}
-  </span>
+export type LampState = 'on' | 'off' | 'wait' | 'idle';
+
+/** Indicator lamp; always pair it with a text label, color alone isn't enough. */
+export const Lamp: React.FC<{ state: LampState; className?: string }> = ({ state, className = '' }) => (
+  <span aria-hidden className={`lamp ${className}`} data-state={state === 'idle' ? undefined : state} />
 );
 
 interface SwitchProps {
   value: boolean;
   onValueChange: (value: boolean) => void;
   disabled?: boolean;
+  /** Visible label; use `label` instead when the label is elsewhere (aria-label). */
+  children?: React.ReactNode;
   label?: string;
+  hint?: string;
 }
 
-export const Switch: React.FC<SwitchProps> = ({ value, onValueChange, disabled, label }) => (
-  <button
-    type="button"
-    role="switch"
-    aria-checked={value}
-    aria-label={label}
-    disabled={disabled}
-    onClick={() => onValueChange(!value)}
-    className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${
-      value ? 'bg-primary' : 'bg-gray-400'
-    } disabled:opacity-50`}
-  >
-    <span
-      className={`inline-block size-5 rounded-full bg-white shadow transition-transform ${
-        value ? 'translate-x-6' : 'translate-x-1'
-      }`}
+/** <input type="checkbox" switch>, polyfilled where needed (see main.tsx). */
+export const Switch: React.FC<SwitchProps> = ({ value, onValueChange, disabled, children, label, hint }) => {
+  const id = useId();
+  const input = (
+    <input
+      id={id}
+      type="checkbox"
+      {...{ switch: '' }}
+      checked={value}
+      disabled={disabled}
+      aria-label={children ? undefined : label}
+      aria-describedby={hint ? `${id}-hint` : undefined}
+      onChange={e => onValueChange(e.target.checked)}
+      className="shrink-0"
     />
+  );
+  if (!children) return input;
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <label htmlFor={id} className="min-w-0">
+        <span className="block font-medium text-ink">{children}</span>
+        {hint ? (
+          <span id={`${id}-hint`} className="block text-sm text-steel">
+            {hint}
+          </span>
+        ) : null}
+      </label>
+      {input}
+    </div>
+  );
+};
+
+const buttonBase =
+  'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors disabled:opacity-50';
+
+export const buttonStyles = {
+  primary: `${buttonBase} bg-ink px-4 py-3 text-panel active:bg-ink-soft`,
+  secondary: `${buttonBase} border border-line bg-panel px-4 py-3 text-ink active:bg-enamel`,
+  danger: `${buttonBase} bg-stop px-4 py-3 text-white active:brightness-90`,
+  ghost: `${buttonBase} px-2 py-1.5 text-ink-soft active:bg-enamel`,
+};
+
+/** Small refresh control for list headers. */
+export const RefreshButton: React.FC<{ onClick: () => void; busy: boolean; label?: string; busyLabel?: string }> = ({
+  onClick,
+  busy,
+  label = 'Refresh',
+  busyLabel = 'Checking',
+}) => (
+  <button onClick={onClick} disabled={busy} className={`${buttonStyles.secondary} px-3 py-2 text-sm`}>
+    <RotateCw size={16} className={busy ? 'animate-spin motion-reduce:animate-none' : ''} />
+    {busy ? busyLabel : label}
   </button>
 );
 
-/** Full-area animated loading state (replaces the RN "Modern...Loading" screens). */
-export const LoadingState: React.FC<{ emoji: string; title: string; subtitle?: string }> = ({
-  emoji,
-  title,
-  subtitle,
-}) => (
-  <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-6 py-16 animate-fade-in">
-    <div className="absolute left-8 top-16 size-20 rounded-full bg-primary/10 animate-float" />
+/** Gauge-style progress bar; GSAP eases it to each new value from the last poll. */
+export const ProgressBar: React.FC<{ value: number; color: string; label: string }> = ({ value, color, label }) => {
+  const fill = useRef<HTMLDivElement>(null);
+  const clamped = Math.max(0, Math.min(100, value));
+  useGSAP(
+    () => {
+      gsap.to(fill.current, { width: `${clamped}%`, duration: motionDuration(0.6), ease: 'power2.out' });
+    },
+    { dependencies: [clamped] },
+  );
+  return (
     <div
-      className="absolute bottom-24 right-10 size-14 rounded-full bg-success/10 animate-float"
-      style={{ animationDelay: '1s' }}
-    />
-    <div className="relative mb-6 flex size-24 items-center justify-center rounded-full bg-white shadow-lg">
-      <span className="absolute inset-0 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-      <span className="text-4xl">{emoji}</span>
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={clamped}
+      className="h-2 overflow-hidden rounded-full bg-line"
+    >
+      <div ref={fill} className="h-full rounded-full" style={{ width: 0, backgroundColor: color }} />
     </div>
-    <div className="mb-2 flex items-center gap-2">
-      <h2 className="text-lg font-bold text-ink">{title}</h2>
-      <Dots />
-    </div>
-    {subtitle ? <p className="text-center text-sm text-muted">{subtitle}</p> : null}
+  );
+};
+
+/**
+ * Fades list rows in when they first appear, and again when `key` changes (e.g. a new
+ * folder), but not on every poll refresh.
+ */
+export const useListEntrance = (scope: React.RefObject<HTMLElement | null>, ready: boolean, key?: unknown) => {
+  useGSAP(
+    () => {
+      if (!ready) return;
+      gsap.from('[data-row]', {
+        opacity: 0,
+        y: motionDuration(10),
+        duration: motionDuration(0.32),
+        stagger: motionDuration(0.04),
+        ease: 'power2.out',
+        clearProps: 'all',
+      });
+    },
+    { scope, dependencies: [ready, key] },
+  );
+};
+
+/** Full-area loading state. */
+export const LoadingState: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
+  <div role="status" className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+    <Spinner className="size-8 border-[3px]" color="var(--color-ink)" />
+    <p className="font-display text-xl font-semibold text-ink">{title}</p>
+    {subtitle ? <p className="text-sm text-steel">{subtitle}</p> : null}
   </div>
 );
 
-/** Full-area error state with retry (replaces the RN "ModernErrorScreen"s). */
+/** Full-area error state with retry. */
 export const ErrorState: React.FC<{
   title: string;
-  subtitle?: string;
   error: string;
   onRetry: () => void;
   retryLabel?: string;
   help?: string;
-}> = ({ title, subtitle, error, onRetry, retryLabel = 'Try Again', help }) => (
-  <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 animate-fade-in">
-    <div className="relative mb-6 animate-shake">
-      <span className="absolute -inset-3 rounded-full bg-danger/15 animate-pulse" />
-      <div className="relative flex size-20 items-center justify-center rounded-full bg-white shadow-lg">
-        <span className="text-4xl">⚠️</span>
+}> = ({ title, error, onRetry, retryLabel = 'Try again', help }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  useGSAP(
+    () => {
+      gsap.from(ref.current, { x: motionDuration(8), duration: motionDuration(0.45), ease: 'elastic.out(1, 0.3)' });
+    },
+    { scope: ref },
+  );
+  return (
+    <div ref={ref} role="alert" className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-4 px-5 py-12">
+      <TriangleAlert size={32} className="text-stop" />
+      <div>
+        <h2 className="font-display text-2xl font-semibold text-ink">{title}</h2>
+        <p className="mt-1 break-words text-steel">{error}</p>
+        {help ? <p className="mt-2 text-sm text-steel">{help}</p> : null}
       </div>
+      <button onClick={onRetry} className={`${buttonStyles.primary} self-start`}>
+        <RotateCw size={18} />
+        {retryLabel}
+      </button>
     </div>
-    <h2 className="mb-1 text-center text-xl font-bold text-ink">{title}</h2>
-    {subtitle ? <p className="mb-5 text-center text-sm text-muted">{subtitle}</p> : null}
-    <div className="mb-6 w-full max-w-md rounded-2xl border border-danger/20 bg-white p-4 shadow-sm">
-      <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-danger/10 px-3 py-1 text-xs font-semibold text-danger">
-        🔍 Error Details
-      </div>
-      <p className="break-words text-sm text-ink-soft">{error}</p>
-    </div>
-    <button
-      onClick={onRetry}
-      className="rounded-full bg-primary px-8 py-3 font-semibold text-white shadow-md shadow-primary/30 transition active:scale-95"
-    >
-      🔄 {retryLabel}
-    </button>
-    {help ? <p className="mt-4 text-center text-xs text-muted">{help}</p> : null}
-  </div>
-);
+  );
+};
 
 export const initials = (label: string) =>
   label

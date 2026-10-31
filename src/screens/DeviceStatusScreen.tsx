@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Power, Camera, RefreshCw } from 'lucide-react';
 import { AVAILABLE_USERS, DEFAULT_PASSWORD } from '../constants/users';
 import { DEVICE_SHUTDOWN_BOT_TASK, DEVICE_SCREENSHOT_BOT_TASK } from '../constants/deviceAutomationBots';
@@ -12,15 +12,15 @@ import {
   ErrorModal,
   LoadingModal,
 } from '../components';
-import { Spinner, initials } from '../components/ui';
+import { ScreenTitle } from '../components/ScreenWrapper';
+import { Lamp, RefreshButton, Spinner, useListEntrance } from '../components/ui';
 import { User } from '../types';
 import { getToken, getDeviceInfo, resetDevice, invalidateCachedDevice } from '../Functions';
 import { deviceAutomationBot } from '../utils/deviceAutomationBot';
-import { SummaryHeader } from './SummaryHeader';
+import { StatusStrip } from './SummaryHeader';
 
 interface DeviceStatusItemProps {
   user: User;
-  index: number;
   onResetDevice: (user: User) => void;
   onShutdown: (user: User) => void;
   onScreenshot: (user: User) => void;
@@ -32,7 +32,6 @@ interface DeviceStatusItemProps {
 
 const DeviceStatusItem: React.FC<DeviceStatusItemProps> = ({
   user,
-  index,
   onResetDevice,
   onShutdown,
   onScreenshot,
@@ -41,92 +40,56 @@ const DeviceStatusItem: React.FC<DeviceStatusItemProps> = ({
   isScreenshotRunning,
   automationBusy,
 }) => {
-  const statusColor = user.checkingDevice ? '#f0ad4e' : user.deviceConnected ? '#28a745' : '#dc3545';
-  const statusLabel = user.checkingDevice ? 'Checking' : user.deviceConnected ? 'Connected' : 'Disconnected';
+  const statusLabel = user.checkingDevice ? 'Checking' : user.deviceConnected ? 'Online' : 'Offline';
   const canUseDeviceActions = !!user.deviceConnected && !user.checkingDevice && !automationBusy;
 
   const actionButton = (
     label: string,
     onPress: () => void,
     running: boolean,
-    color: string,
-    tint: string,
-    Icon: React.FC<{ size?: number; color?: string; strokeWidth?: number }>,
+    Icon: typeof Power,
+    tone: 'stop' | 'ink',
   ) => {
     const enabled = canUseDeviceActions && !running;
     return (
       <button
         onClick={onPress}
         disabled={!enabled}
-        aria-label={label}
-        title={label}
-        className="flex size-12 items-center justify-center rounded-xl border transition active:scale-90"
-        style={
-          enabled
-            ? { backgroundColor: tint, borderColor: `${color}55` }
-            : { backgroundColor: '#f1f3f5', borderColor: '#e9ecef' }
-        }
+        className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 py-2.5 text-sm font-semibold transition-colors active:bg-enamel disabled:border-line disabled:text-steel/50 ${
+          tone === 'stop' ? 'border-stop/40 text-stop' : 'border-line text-ink'
+        }`}
       >
-        {running ? (
-          <Spinner className="size-5" color={color} />
-        ) : (
-          <Icon size={22} color={canUseDeviceActions ? color : '#adb5bd'} strokeWidth={2.25} />
-        )}
+        {running ? <Spinner className="size-4" /> : <Icon size={17} strokeWidth={2.25} />}
+        {label}
       </button>
     );
   };
 
   return (
-    <div
-      className="rounded-2xl border border-line bg-white p-4 shadow-sm animate-slide-in"
-      style={{ animationDelay: `${index * 70}ms` }}
-    >
-      <div className="flex items-start gap-3">
-        <div className="relative shrink-0">
-          <div
-            className={`flex size-12 items-center justify-center rounded-full font-bold text-ink-soft ${
-              user.deviceConnected ? 'bg-success/15' : 'bg-danger/10'
-            }`}
-          >
-            {initials(user.label)}
-          </div>
-          {user.deviceConnected && !user.checkingDevice && (
-            <span className="absolute -bottom-0.5 -right-0.5 flex size-5 items-center justify-center rounded-full border-2 border-white bg-success text-[10px] font-bold text-white">
-              ✓
-            </span>
-          )}
-        </div>
-
+    <div data-row className="px-4 py-3.5">
+      <div className="flex items-center gap-3">
+        <Lamp state={user.checkingDevice ? 'wait' : user.deviceConnected ? 'on' : 'off'} />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <p className="truncate font-bold text-ink">{user.label}</p>
-            <span
-              className="flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
-              style={{ color: statusColor, backgroundColor: `${statusColor}1a` }}
-            >
-              {user.checkingDevice ? (
-                <Spinner className="size-3" color={statusColor} />
-              ) : (
-                <span className="size-2 rounded-full" style={{ backgroundColor: statusColor }} />
-              )}
-              {statusLabel}
-            </span>
-          </div>
-          <p className="truncate text-sm text-muted">{user.email}</p>
-          {user.deviceConnected && !user.checkingDevice && user.primaryDeviceId ? (
-            <p className="truncate font-mono text-xs text-gray-400">ID {user.primaryDeviceId}</p>
-          ) : null}
+          <p className="font-semibold text-ink">{user.label}</p>
+          <p className="truncate text-sm text-steel">
+            {user.email}
+            {user.deviceConnected && !user.checkingDevice && user.primaryDeviceId
+              ? `, device ${user.primaryDeviceId}`
+              : ''}
+          </p>
         </div>
+        <span className="shrink-0 text-sm font-medium text-ink-soft">{statusLabel}</span>
       </div>
 
-      <div className="mt-3 flex justify-end gap-2 border-t border-line pt-3">
-        {actionButton('Shutdown device', () => onShutdown(user), isShutdownRunning, '#c0392b', '#fff5f5', Power)}
-        {actionButton('Device screenshot', () => onScreenshot(user), isScreenshotRunning, '#007bff', '#f0f7ff', Camera)}
-        {actionButton('Reset device', () => onResetDevice(user), isResetting, '#e74c3c', '#fdf2f2', RefreshCw)}
+      <div className="mt-3 flex gap-2 pl-[22px]">
+        {actionButton('Screenshot', () => onScreenshot(user), isScreenshotRunning, Camera, 'ink')}
+        {actionButton('Reset', () => onResetDevice(user), isResetting, RefreshCw, 'ink')}
+        {actionButton('Shut down', () => onShutdown(user), isShutdownRunning, Power, 'stop')}
       </div>
     </div>
   );
 };
+
 
 export const DeviceStatusScreen = () => {
   const { usersWithDeviceStatus, checkDevicesStatus, lastCheckedAt } = useDeviceStatus(AVAILABLE_USERS);
@@ -244,72 +207,63 @@ export const DeviceStatusScreen = () => {
     return () => clearInterval(interval);
   }, [checkDevicesStatus]);
 
+
   const lastUpdatedLabel =
     lastCheckedAt != null
-      ? `Updated ${new Date(lastCheckedAt).toLocaleTimeString(undefined, {
+      ? `Updated at ${new Date(lastCheckedAt).toLocaleTimeString(undefined, {
           hour: '2-digit',
           minute: '2-digit',
           second: '2-digit',
         })}`
-      : null;
+      : 'Updates every 5 seconds';
 
   const connectedCount = usersWithDeviceStatus.filter(user => user.deviceConnected).length;
   const totalCount = usersWithDeviceStatus.length;
   const checkingCount = usersWithDeviceStatus.filter(user => user.checkingDevice).length;
 
+  const listRef = useRef<HTMLDivElement>(null);
+  useListEntrance(listRef, totalCount > 0);
+
   return (
     <ScreenWrapper>
-      <div className="flex min-h-0 flex-1 flex-col animate-fade-in">
-        <SummaryHeader
-          title="Device Connection Status"
-          subtitle="Monitor all account device connections"
-          items={[
-            { value: connectedCount, label: 'Connected', color: '#28a745' },
-            { value: totalCount - connectedCount - checkingCount, label: 'Disconnected', color: '#dc3545' },
-            { value: checkingCount, label: 'Checking', color: '#ffc107' },
-          ]}
-        />
-
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl p-4 safe-bottom">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-ink">All Accounts</h3>
-                {lastUpdatedLabel ? <p className="text-xs text-muted">{lastUpdatedLabel}</p> : null}
-              </div>
-              <button
-                onClick={handleRefresh}
-                disabled={checkingCount > 0}
-                className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white shadow transition active:scale-95 disabled:bg-primary/60"
-              >
-                <RefreshCw size={16} className={checkingCount > 0 ? 'animate-spin' : ''} />
-                {checkingCount > 0 ? 'Checking...' : 'Refresh All'}
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {usersWithDeviceStatus.map((item, index) => {
-                const shutdownId = deviceAutomationBot(item.id, DEVICE_SHUTDOWN_BOT_TASK, 'shutdown').id;
-                const screenshotId = deviceAutomationBot(item.id, DEVICE_SCREENSHOT_BOT_TASK, 'screenshot').id;
-                return (
-                  <DeviceStatusItem
-                    key={item.id}
-                    user={item}
-                    index={index}
-                    onResetDevice={u => openDeviceConfirm('reset', u)}
-                    onShutdown={u => openDeviceConfirm('shutdown', u)}
-                    onScreenshot={u => openDeviceConfirm('screenshot', u)}
-                    isResetting={resettingUsers.has(item.id)}
-                    isShutdownRunning={executingBots.has(shutdownId)}
-                    isScreenshotRunning={executingBots.has(screenshotId)}
-                    automationBusy={automationLoading}
-                  />
-                );
-              })}
-            </div>
+      <div className="flex-1 overflow-y-auto">
+        <div ref={listRef} className="mx-auto w-full max-w-3xl safe-bottom">
+          <ScreenTitle
+            title="Devices"
+            subtitle={lastUpdatedLabel}
+            action={
+              <RefreshButton onClick={handleRefresh} busy={checkingCount > 0} label="Check all" busyLabel="Checking" />
+            }
+          />
+          <StatusStrip
+            items={[
+              { value: connectedCount, label: 'Online', lamp: 'on' },
+              { value: totalCount - connectedCount - checkingCount, label: 'Offline', lamp: 'off' },
+              { value: checkingCount, label: 'Checking', lamp: 'wait' },
+            ]}
+          />
+          <div className="mx-3 mb-4 divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
+            {usersWithDeviceStatus.map(item => {
+              const shutdownId = deviceAutomationBot(item.id, DEVICE_SHUTDOWN_BOT_TASK, 'shutdown').id;
+              const screenshotId = deviceAutomationBot(item.id, DEVICE_SCREENSHOT_BOT_TASK, 'screenshot').id;
+              return (
+                <DeviceStatusItem
+                  key={item.id}
+                  user={item}
+                  onResetDevice={u => openDeviceConfirm('reset', u)}
+                  onShutdown={u => openDeviceConfirm('shutdown', u)}
+                  onScreenshot={u => openDeviceConfirm('screenshot', u)}
+                  isResetting={resettingUsers.has(item.id)}
+                  isShutdownRunning={executingBots.has(shutdownId)}
+                  isScreenshotRunning={executingBots.has(screenshotId)}
+                  automationBusy={automationLoading}
+                />
+              );
+            })}
           </div>
         </div>
       </div>
+
 
       <LoadingModal visible={automationLoading} message={automationLoadingMessage} />
 
@@ -323,7 +277,7 @@ export const DeviceStatusScreen = () => {
 
       <SuccessModal
         visible={successModalVisible}
-        title="Success"
+        title="Done"
         message={successMessage}
         onConfirm={() => {
           setSuccessModalVisible(false);
@@ -337,7 +291,7 @@ export const DeviceStatusScreen = () => {
 
       <ErrorModal
         visible={errorModalVisible}
-        title="Error"
+        title="That didn't work"
         message={errorMessage}
         onConfirm={() => {
           setErrorModalVisible(false);

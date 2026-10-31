@@ -1,6 +1,6 @@
 import React from 'react';
 import { UserWithActivity } from '../types';
-import { Dots } from './ui';
+import { Lamp, ProgressBar } from './ui';
 
 interface ActivityCardProps {
   user: UserWithActivity;
@@ -41,44 +41,38 @@ const formatDuration = (startTime: string): string => {
 };
 
 const getProgressColor = (progress: number): string => {
-  if (progress === 0) return '#6c757d';
-  if (progress < 25) return '#dc3545';
-  if (progress < 50) return '#ffc107';
-  if (progress < 75) return '#17a2b8';
-  return '#28a745';
+  if (progress === 0) return '#626d73';
+  if (progress < 25) return '#d2382b';
+  if (progress < 50) return '#e08a00';
+  if (progress < 75) return '#2f7fb5';
+  return '#1f9d55';
 };
 
-const UserSection: React.FC<{ user: UserWithActivity }> = ({ user }) => (
-  <div className="min-w-0">
-    <p className="text-base font-bold text-ink">{user.label}</p>
-    <p className="truncate text-sm text-muted">{user.email}</p>
-  </div>
-);
-
+/** One account row on the "Running now" screen. */
 export const ActivityCard: React.FC<ActivityCardProps> = ({ user }) => {
+  const header = (lamp: React.ReactNode, state: string) => (
+    <div className="flex items-center gap-3">
+      {lamp}
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-ink">{user.label}</p>
+        <p className="truncate text-sm text-steel">{user.email}</p>
+      </div>
+      <span className="shrink-0 text-sm font-medium text-ink-soft">{state}</span>
+    </div>
+  );
+
   if (user.checkingActivity) {
     return (
-      <div className="rounded-2xl border border-line bg-white p-4 shadow-sm">
-        <UserSection user={user} />
-        <div className="mt-3 flex items-center gap-3 rounded-xl bg-primary/5 px-4 py-3">
-          <span className="inline-block animate-spin text-xl" style={{ animationDuration: '2s' }}>
-            🔍
-          </span>
-          <span className="text-sm font-semibold text-primary">Checking</span>
-          <Dots />
-        </div>
+      <div data-row className="px-4 py-3.5">
+        {header(<Lamp state="wait" />, 'Checking')}
       </div>
     );
   }
 
   if (!user.activity) {
     return (
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-white p-4 opacity-80 shadow-sm">
-        <UserSection user={user} />
-        <div className="flex shrink-0 flex-col items-center">
-          <span className="text-2xl">💤</span>
-          <span className="text-xs text-muted">No activity</span>
-        </div>
+      <div data-row className="px-4 py-3.5">
+        {header(<Lamp state="idle" />, 'Idle')}
       </div>
     );
   }
@@ -88,51 +82,45 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({ user }) => {
     Math.round(((activity.currentLine - 1) / activity.totalLines) * 100) || activity.progress || 0;
 
   return (
-    <div className="rounded-2xl border-l-4 border-success bg-white p-4 shadow-sm animate-fade-in">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <UserSection user={user} />
-        <div className="flex shrink-0 flex-col items-center">
-          <span className="flex size-10 items-center justify-center rounded-full bg-success/15 text-xl animate-pulse">
-            🤖
-          </span>
-          <span className="mt-1 text-xs font-semibold text-success">Running</span>
-        </div>
-      </div>
+    <div data-row className="bg-signal/10 px-4 py-4">
+      {header(<Lamp state="on" />, 'Running')}
 
-      <div className="mb-3 space-y-1 rounded-xl bg-surface p-3">
-        <p className="break-words font-semibold text-ink">{activity.fileName}</p>
-        <p className="text-sm text-ink-soft">📱 {activity.deviceName}</p>
-        {activity.currentBotName && activity.currentBotName !== activity.fileName && (
-          <p className="text-sm text-ink-soft">🤖 Current: {activity.currentBotName}</p>
-        )}
-        {activity.command && <p className="break-words font-mono text-xs text-muted">⚙️ {activity.command}</p>}
-      </div>
-
-      <div className="mb-3">
-        <div className="mb-1 flex justify-between text-sm">
-          <span className="font-medium text-ink-soft">Progress</span>
-          <span className="font-bold text-ink">{progressPercentage}%</span>
+      <div className="mt-3 ml-[22px] space-y-3">
+        <div>
+          <p className="break-words font-display text-lg font-semibold leading-snug text-ink">{activity.fileName}</p>
+          <p className="text-sm text-steel">
+            on {activity.deviceName}
+            {activity.currentBotName && activity.currentBotName !== activity.fileName
+              ? `, now in ${activity.currentBotName}`
+              : ''}
+          </p>
+          {activity.command && <p className="mt-0.5 break-words text-sm text-steel">Step: {activity.command}</p>}
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-line">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${progressPercentage}%`, backgroundColor: getProgressColor(progressPercentage) }}
+
+        <div>
+          <div className="mb-1 flex justify-between text-sm">
+            <span className="text-steel">
+              Line {activity.currentLine} of {activity.totalLines}
+            </span>
+            <span className="font-semibold text-ink">{progressPercentage}%</span>
+          </div>
+          <ProgressBar
+            value={progressPercentage}
+            color={getProgressColor(progressPercentage)}
+            label={`${activity.fileName} progress`}
           />
         </div>
-        <p className="mt-1 text-xs text-muted">
-          Line {activity.currentLine} of {activity.totalLines}
-        </p>
-      </div>
 
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        <div>
-          <p className="text-xs text-muted">Started:</p>
-          <p className="font-medium text-ink">{formatDateTime(activity.startDateTime)}</p>
-        </div>
-        <div>
-          <p className="text-xs text-muted">Duration:</p>
-          <p className="font-medium text-ink">{formatDuration(activity.startDateTime)}</p>
-        </div>
+        <dl className="grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <dt className="text-steel">Started</dt>
+            <dd className="font-medium text-ink">{formatDateTime(activity.startDateTime)}</dd>
+          </div>
+          <div>
+            <dt className="text-steel">Running for</dt>
+            <dd className="font-medium text-ink">{formatDuration(activity.startDateTime)}</dd>
+          </div>
+        </dl>
       </div>
     </div>
   );

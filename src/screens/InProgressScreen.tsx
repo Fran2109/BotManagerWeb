@@ -1,12 +1,14 @@
-import { useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { AVAILABLE_USERS } from '../constants/users';
 import { useInProgressActivities } from '../hooks/useInProgressActivities';
 import { ScreenWrapper, ActivityCard } from '../components';
-import { SummaryHeader } from './SummaryHeader';
+import { ScreenTitle } from '../components/ScreenWrapper';
+import { RefreshButton, useListEntrance } from '../components/ui';
+import { StatusStrip } from './SummaryHeader';
 
 export const InProgressScreen = () => {
   const { usersWithActivities, checkActivitiesStatus, getTotalRunningBots } = useInProgressActivities();
+  const listRef = useRef<HTMLDivElement>(null);
 
   const handleRefresh = () => {
     checkActivitiesStatus(AVAILABLE_USERS, false);
@@ -26,32 +28,25 @@ export const InProgressScreen = () => {
   const checkingCount = usersWithActivities.filter(user => user.checkingActivity).length;
   const isRefreshing = checkingCount > 0;
 
+  useListEntrance(listRef, totalUsers > 0);
+
   return (
     <ScreenWrapper>
-      <SummaryHeader
-        title="Bots in Progress"
-        subtitle="Real-time activity monitor"
-        items={[
-          { value: runningBotsCount, label: 'Running', color: '#28a745' },
-          { value: totalUsers - runningBotsCount - checkingCount, label: 'Inactive', color: '#6c757d' },
-          { value: checkingCount, label: 'Checking', color: '#ffc107' },
-        ]}
-      />
-
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl p-4 safe-bottom">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-lg font-bold text-ink">All Accounts</h3>
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white shadow transition active:scale-95 disabled:bg-primary/60"
-            >
-              <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
-              {isRefreshing ? 'Checking' : 'Refresh'}
-            </button>
-          </div>
-          <div className="flex flex-col gap-3">
+        <div ref={listRef} className="mx-auto w-full max-w-3xl safe-bottom">
+          <ScreenTitle
+            title="Running now"
+            subtitle="Updates every 10 seconds"
+            action={<RefreshButton onClick={handleRefresh} busy={isRefreshing} />}
+          />
+          <StatusStrip
+            items={[
+              { value: runningBotsCount, label: 'Running', lamp: 'on' },
+              { value: totalUsers - runningBotsCount - checkingCount, label: 'Idle', lamp: 'idle' },
+              { value: checkingCount, label: 'Checking', lamp: 'wait' },
+            ]}
+          />
+          <div className="mx-3 mb-4 divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
             {usersWithActivities.map(item => (
               <ActivityCard key={item.id} user={item} />
             ))}

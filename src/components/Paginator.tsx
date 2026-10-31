@@ -69,83 +69,82 @@ export const Paginator: React.FC<PaginatorProps> = ({
       onClick={onClick}
       disabled={!enabled || loading}
       aria-label={label}
-      className="flex size-9 items-center justify-center rounded-lg border border-line bg-white text-primary transition active:scale-95 disabled:text-gray-300"
+      className="flex size-10 items-center justify-center rounded-lg text-ink active:bg-enamel disabled:text-line"
     >
       {icon}
     </button>
   );
 
-  const pageSizeButton = (
-    <button
-      onClick={() => setShowDropdown(true)}
-      className="flex items-center gap-1 self-center rounded-lg border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink-soft"
-    >
-      {pageSize} per page <ChevronDown size={14} />
-    </button>
-  );
-
-  const dropdown = (
-    <Modal visible={showDropdown} onRequestClose={() => setShowDropdown(false)}>
-      <div className="mx-auto w-56 overflow-hidden rounded-2xl bg-white shadow-xl">
-        {pageSizeOptions.map(option => (
-          <button
-            key={option}
-            onClick={() => handlePageSizeChange(option)}
-            className={`block w-full px-5 py-3 text-left text-sm ${
-              option === pageSize ? 'bg-primary/10 font-semibold text-primary' : 'text-ink hover:bg-surface'
-            }`}
-          >
-            {option} per page
-          </button>
-        ))}
-      </div>
-    </Modal>
-  );
-
-  if (totalPages <= 1) {
-    return (
-      <div className="flex items-center justify-between border-t border-line bg-white px-4 py-3 safe-bottom">
-        <span className="text-sm text-muted">
-          {totalItems === 0 ? 'No items' : `${totalItems} item${totalItems === 1 ? '' : 's'}`}
-        </span>
-        {pageSizeButton}
-        {dropdown}
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-2.5 border-t border-line bg-white px-4 py-3 safe-bottom">
-      <div className="flex justify-between text-sm">
-        <span className="font-medium text-ink">
-          {startItem}-{endItem} of {totalItems}
+    <nav aria-label="Pages" className="border-t border-line bg-panel px-3 pt-2 safe-bottom">
+      <div className="flex items-center justify-between gap-2 px-1 text-sm">
+        <span className="text-steel">
+          {totalPages <= 1
+            ? totalItems === 0
+              ? 'No runs'
+              : `${totalItems} run${totalItems === 1 ? '' : 's'}`
+            : `${startItem}–${endItem} of ${totalItems}`}
         </span>
-        <span className="text-muted">
-          Page {currentPage + 1} of {totalPages}
-        </span>
+        <button
+          onClick={() => setShowDropdown(true)}
+          aria-haspopup="dialog"
+          className="flex items-center gap-1 rounded-lg px-2 py-1.5 font-medium text-ink active:bg-enamel"
+        >
+          {pageSize} per page <ChevronDown size={14} />
+        </button>
       </div>
 
-      <div className="flex items-center justify-center gap-1.5">
-        {navButton(() => handlePageChange(0), canGoPrevious, <ChevronsLeft size={18} />, 'First page')}
-        {navButton(() => handlePageChange(currentPage - 1), canGoPrevious, <ChevronLeft size={18} />, 'Previous page')}
-        {getVisiblePages().map(page => (
-          <button
-            key={page}
-            onClick={() => handlePageChange(page)}
-            disabled={loading}
-            className={`flex size-9 items-center justify-center rounded-lg text-sm font-semibold transition ${
-              page === currentPage ? 'bg-primary text-white shadow' : 'border border-line bg-white text-ink'
-            }`}
-          >
-            {page + 1}
-          </button>
-        ))}
-        {navButton(() => handlePageChange(currentPage + 1), canGoNext, <ChevronRight size={18} />, 'Next page')}
-        {navButton(() => handlePageChange(totalPages - 1), canGoNext, <ChevronsRight size={18} />, 'Last page')}
-      </div>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-0.5 pb-2 pt-1">
+          {navButton(() => handlePageChange(0), canGoPrevious, <ChevronsLeft size={18} />, 'First page')}
+          {navButton(() => handlePageChange(currentPage - 1), canGoPrevious, <ChevronLeft size={18} />, 'Previous page')}
+          {getVisiblePages().map(page => {
+            const current = page === currentPage;
+            return (
+              <button
+                key={page}
+                onClick={() => handlePageChange(page)}
+                disabled={loading}
+                aria-label={`Page ${page + 1}`}
+                aria-current={current ? 'page' : undefined}
+                className={`flex size-10 items-center justify-center rounded-lg text-sm font-semibold ${
+                  current ? 'bg-ink text-panel' : 'text-ink active:bg-enamel'
+                }`}
+              >
+                {page + 1}
+              </button>
+            );
+          })}
+          {navButton(() => handlePageChange(currentPage + 1), canGoNext, <ChevronRight size={18} />, 'Next page')}
+          {navButton(() => handlePageChange(totalPages - 1), canGoNext, <ChevronsRight size={18} />, 'Last page')}
+        </div>
+      )}
 
-      {pageSizeButton}
-      {dropdown}
-    </div>
+      <Modal
+        visible={showDropdown}
+        onRequestClose={() => setShowDropdown(false)}
+        variant="center"
+        labelledBy="page-size-title"
+      >
+        <div className="overflow-hidden rounded-2xl bg-panel py-2 shadow-xl">
+          <h2 id="page-size-title" className="px-5 pb-1 pt-2 font-display text-lg font-semibold text-ink">
+            Runs per page
+          </h2>
+          {pageSizeOptions.map(option => (
+            <button
+              key={option}
+              onClick={() => handlePageSizeChange(option)}
+              data-autofocus={option === pageSize || undefined}
+              aria-pressed={option === pageSize}
+              className={`block w-full px-5 py-3 text-left ${
+                option === pageSize ? 'bg-signal/25 font-semibold text-ink' : 'text-ink active:bg-enamel'
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </Modal>
+    </nav>
   );
 };

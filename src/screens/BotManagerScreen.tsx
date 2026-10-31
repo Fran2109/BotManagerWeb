@@ -16,10 +16,10 @@ import {
   BotVariablesModal,
   BotNotFoundModal,
 } from '../components';
-import { ErrorState, LoadingState } from '../components/ui';
+import { ErrorState, LoadingState, useListEntrance } from '../components/ui';
 
 const DEVICE_NOT_CONNECTED_MESSAGE =
-  'The bot runner device is not connected. Please check the device connection in the Device Status section.';
+  "The PC for this account is offline, so the bot can't start. Check it in Devices.";
 
 export const BotManagerScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -156,17 +156,20 @@ export const BotManagerScreen = () => {
     runBot(selectedBot, selectedUserEmail, { botInputs, hideBotAgentUi: launchHideBotAgentUiRef.current });
   };
 
+  const listRef = useRef<HTMLDivElement>(null);
+  const folderKey = currentPath[currentPath.length - 1]?.id;
+  useListEntrance(listRef, !botsLoading && !botsError, folderKey);
+
   let content: React.ReactNode;
   if (botsLoading) {
-    content = <LoadingState emoji="🤖" title="Loading bots" subtitle="Preparing your automation tools" />;
+    content = <LoadingState title="Loading bots" />;
   } else if (botsError) {
     content = (
       <ErrorState
-        title="Oops! Something went wrong"
-        subtitle="We encountered an issue while loading your bots"
+        title="Couldn't load bots"
         error={botsError}
         onRetry={refetch}
-        help="Check your internet connection and try again"
+        help="Check that the phone has internet and the Control Room is up."
       />
     );
   } else {
@@ -174,21 +177,26 @@ export const BotManagerScreen = () => {
       <>
         <Breadcrumb path={currentPath} onNavigate={navigateToBreadcrumb} />
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto flex max-w-3xl flex-col gap-2.5 p-4 safe-bottom">
-            {bots.map(item => (
-              <BotCard
-                key={item.id}
-                bot={item}
-                isExecuting={executingBots.has(item.id)}
-                isDisabled={executingBots.has(item.id) || loading}
-                onPress={() => {
-                  setSelectedBot(item);
-                  setModalVisible(true);
-                }}
-                onFolderPress={navigateToFolder}
-              />
-            ))}
-            {bots.length === 0 && <p className="py-10 text-center text-muted">This folder is empty</p>}
+          <div ref={listRef} className="mx-auto w-full max-w-3xl p-3 safe-bottom">
+            {bots.length === 0 ? (
+              <p className="px-2 py-10 text-steel">This folder is empty.</p>
+            ) : (
+              <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
+                {bots.map(item => (
+                  <BotCard
+                    key={item.id}
+                    bot={item}
+                    isExecuting={executingBots.has(item.id)}
+                    isDisabled={executingBots.has(item.id) || loading}
+                    onPress={() => {
+                      setSelectedBot(item);
+                      setModalVisible(true);
+                    }}
+                    onFolderPress={navigateToFolder}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </>

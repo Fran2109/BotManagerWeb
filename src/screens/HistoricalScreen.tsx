@@ -1,9 +1,11 @@
-import { ArrowLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { useRef } from 'react';
+import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { AVAILABLE_USERS } from '../constants/users';
 import { useExecutionHistory } from '../hooks/useExecutionHistory';
 import { useBackHandler } from '../navigation/backHandler';
 import { ScreenWrapper, HistoryCard, Paginator } from '../components';
-import { ErrorState, LoadingState, initials } from '../components/ui';
+import { ScreenTitle } from '../components/ScreenWrapper';
+import { ErrorState, LoadingState, RefreshButton, buttonStyles, useListEntrance } from '../components/ui';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100, 200];
 
@@ -23,6 +25,7 @@ export const HistoricalScreen = () => {
     refresh,
     clearSelection,
   } = useExecutionHistory();
+  const listRef = useRef<HTMLDivElement>(null);
 
   // Android back button returns to the account list.
   useBackHandler(() => {
@@ -30,32 +33,31 @@ export const HistoricalScreen = () => {
     return true;
   }, !!selectedUser);
 
+  // Re-run the entrance for each page and account, not for a refresh of the same page.
+  useListEntrance(listRef, history.length > 0, `${selectedUser?.id}-${currentPage}-${pageSize}`);
+
   if (!selectedUser) {
     return (
       <ScreenWrapper>
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl p-4 safe-bottom">
-            <h2 className="mt-2 text-center text-2xl font-bold text-ink">Select Account to View History</h2>
-            <p className="mb-5 text-center text-sm text-muted">Choose an account to see execution history</p>
-            <div className="flex flex-col gap-3">
-              {AVAILABLE_USERS.map((user, index) => (
-                <button
-                  key={user.id}
-                  onClick={() => selectUser(user)}
-                  style={{ animationDelay: `${index * 70}ms` }}
-                  className="flex items-center gap-3 rounded-2xl border border-line bg-white p-4 text-left shadow-sm transition animate-slide-up active:scale-[0.98]"
-                >
-                  <span className="flex size-11 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">
-                    {initials(user.label)}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-bold text-ink">{user.label}</span>
-                    <span className="block truncate text-sm text-muted">{user.email}</span>
-                  </span>
-                  <ChevronRight size={20} className="text-gray-400" />
-                </button>
+          <div ref={listRef} className="mx-auto w-full max-w-3xl safe-bottom">
+            <ScreenTitle title="History" subtitle="Pick an account to see its past runs." />
+            <ul className="mx-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
+              {AVAILABLE_USERS.map(user => (
+                <li key={user.id} data-row>
+                  <button
+                    onClick={() => selectUser(user)}
+                    className="flex w-full items-center gap-3 px-4 py-4 text-left active:bg-enamel"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-semibold text-ink">{user.label}</span>
+                      <span className="block truncate text-sm text-steel">{user.email}</span>
+                    </span>
+                    <ChevronRight size={20} className="text-steel" />
+                  </button>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </div>
       </ScreenWrapper>
@@ -64,45 +66,42 @@ export const HistoricalScreen = () => {
 
   let body: React.ReactNode;
   if (error) {
-    body = <ErrorState title="Error loading history:" error={error} onRetry={refresh} retryLabel="Retry" />;
+    body = <ErrorState title="Couldn't load the history" error={error} onRetry={refresh} />;
   } else if (loading && history.length === 0) {
-    body = <LoadingState emoji="📋" title="Loading execution history" subtitle="Retrieving your automation timeline" />;
+    body = <LoadingState title="Loading history" />;
   } else if (history.length === 0) {
-    body = <p className="py-16 text-center text-muted">No executions found</p>;
+    body = <p className="px-4 py-10 text-steel">{selectedUser.label} hasn't run any bots yet.</p>;
   } else {
     body = (
-      <div className={`mx-auto flex w-full max-w-3xl flex-col gap-3 p-4 transition-opacity ${loading ? 'opacity-50' : ''}`}>
-        {history.map(item => (
-          <HistoryCard key={item.id} activity={item} />
-        ))}
+      <div
+        ref={listRef}
+        aria-busy={loading}
+        className={`mx-auto mb-4 w-full max-w-3xl px-3 transition-opacity ${loading ? 'opacity-50' : ''}`}
+      >
+        <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
+          {history.map(item => (
+            <HistoryCard key={item.id} activity={item} />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
     <ScreenWrapper>
-      <div className="border-b border-line bg-white px-4 pb-4 pt-3">
-        <div className="mb-2 flex items-center justify-between">
-          <button
-            onClick={clearSelection}
-            className="flex items-center gap-1 rounded-lg px-2 py-1.5 font-semibold text-primary"
-          >
-            <ArrowLeft size={18} /> Back
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="mx-auto w-full max-w-3xl">
+          <button onClick={clearSelection} className={`${buttonStyles.ghost} ml-2 mt-2`}>
+            <ArrowLeft size={18} /> All accounts
           </button>
-          <button
-            onClick={refresh}
-            disabled={loading}
-            className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white shadow transition active:scale-95 disabled:bg-primary/60"
-          >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            {loading ? 'Loading' : 'Refresh'}
-          </button>
+          <ScreenTitle
+            title={selectedUser.label}
+            subtitle="Past runs, newest first. Tap one for details."
+            action={<RefreshButton onClick={refresh} busy={loading} busyLabel="Loading" />}
+          />
         </div>
-        <h2 className="text-center text-2xl font-bold text-ink">Execution History</h2>
-        <p className="text-center text-sm text-muted">{selectedUser.label}</p>
+        {body}
       </div>
-
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{body}</div>
 
       {!error && totalExecutions > 0 && (
         <Paginator

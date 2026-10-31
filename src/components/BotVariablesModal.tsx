@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Settings2 } from 'lucide-react';
 import { BotVariable, BotInput, Bot, BotDictionaryEntry, BotDictionaryEntryValue, DictionaryValueSubtype } from '../types';
 import { getBotContent, getToken } from '../Functions';
 import { AVAILABLE_USERS, DEFAULT_PASSWORD } from '../constants/users';
@@ -27,7 +26,7 @@ interface BotVariablesModalProps {
 }
 
 const inputClass =
-  'w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-base text-ink outline-none transition placeholder:text-gray-400 focus:border-primary focus:ring-2 focus:ring-primary/20';
+  'w-full min-w-0 rounded-lg border border-line bg-white px-3.5 py-2.5 text-base text-ink outline-none transition placeholder:text-steel/60 focus:border-ink focus:ring-2 focus:ring-signal';
 
 const getDateTimeParts = (value?: string): { date: string; time: string } => {
   if (!value) {
@@ -286,7 +285,11 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
       if (subtype === 'BOOLEAN') {
         return (
           <div className="flex items-center gap-3 py-1">
-            <Switch value={!!v.boolean} onValueChange={b => setEntryValue(index, { type: 'BOOLEAN', boolean: b })} />
+            <Switch
+              value={!!v.boolean}
+              onValueChange={b => setEntryValue(index, { type: 'BOOLEAN', boolean: b })}
+              label={`Value for ${entry.key || `entry ${index + 1}`}`}
+            />
             <span className="text-sm text-ink-soft">{v.boolean ? 'True' : 'False'}</span>
           </div>
         );
@@ -323,27 +326,33 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
     return (
       <div className="space-y-3">
         {constraint.locked ? (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted">Value type (fixed)</span>
-            <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-white">
-              {constraint.subtype}
-            </span>
-          </div>
+          <p className="text-sm text-steel">
+            Every value is <span className="font-semibold text-ink">{constraint.subtype.toLowerCase()}</span>
+          </p>
         ) : null}
         {entries.map((entry, index) => (
-          <div key={`${variableName}-dict-${index}`} className="space-y-2 rounded-xl border border-line bg-surface p-3">
-            <input className={inputClass} value={entry.key} onChange={e => setKey(index, e.target.value)} placeholder="Key" />
+          <fieldset key={`${variableName}-dict-${index}`} className="space-y-2 rounded-lg border border-line bg-enamel/50 p-3">
+            <legend className="sr-only">Entry {index + 1}</legend>
+            <input
+              className={inputClass}
+              value={entry.key}
+              onChange={e => setKey(index, e.target.value)}
+              placeholder="Key"
+              aria-label={`Key of entry ${index + 1}`}
+            />
             {!constraint.locked ? (
-              <div className="flex flex-wrap gap-1.5">
+              <div role="radiogroup" aria-label="Value type" className="flex flex-wrap gap-1.5">
                 {DICTIONARY_VALUE_SUBTYPES.map(st => (
                   <button
                     key={st}
+                    role="radio"
+                    aria-checked={entry.value.type === st}
                     onClick={() => setSubtype(index, st)}
-                    className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${
-                      entry.value.type === st ? 'bg-primary text-white' : 'border border-line bg-white text-muted'
+                    className={`rounded-md px-2.5 py-1 text-sm font-medium capitalize transition-colors ${
+                      entry.value.type === st ? 'bg-ink text-panel' : 'border border-line bg-panel text-ink-soft'
                     }`}
                   >
-                    {st}
+                    {st.toLowerCase()}
                   </button>
                 ))}
               </div>
@@ -352,17 +361,17 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
             <button
               onClick={() => removeRow(index)}
               disabled={entries.length <= 1}
-              className="text-sm font-semibold text-danger disabled:text-gray-300"
+              className="text-sm font-semibold text-stop disabled:text-line"
             >
-              Remove
+              Remove entry
             </button>
-          </div>
+          </fieldset>
         ))}
         <button
           onClick={addRow}
-          className="w-full rounded-xl border-2 border-dashed border-primary/40 py-2.5 text-sm font-semibold text-primary"
+          className="w-full rounded-lg border-2 border-dashed border-line py-2.5 text-sm font-semibold text-ink-soft"
         >
-          + Add entry
+          Add entry
         </button>
       </div>
     );
@@ -378,7 +387,7 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
     let field: React.ReactNode;
     if (varType === 'BOOLEAN') {
       field = (
-        <div className="flex items-center justify-between rounded-xl bg-surface px-4 py-3">
+        <div className="flex items-center justify-between rounded-lg border border-line bg-enamel/50 px-4 py-3">
           <span className="font-medium text-ink">{currentValue?.boolean ? 'True' : 'False'}</span>
           <Switch
             value={currentValue?.boolean || false}
@@ -395,28 +404,27 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
           value={currentValue?.string || ''}
           onChange={e => handleInputChange(variable.name, 'STRING', e.target.value)}
           placeholder={defaultValue.string || `Enter ${variable.name}`}
+          aria-describedby={variable.description ? `${inputId}-desc` : undefined}
         />
       );
     } else if (varType === 'NUMBER') {
       field = (
-        <div className="relative">
-          <input
-            id={inputId}
-            className={`${inputClass} pr-12`}
-            type="number"
-            inputMode="decimal"
-            value={currentValue?.number?.toString() || ''}
-            onChange={e => handleInputChange(variable.name, 'NUMBER', e.target.value)}
-            onFocus={e => e.target.select()}
-            placeholder={defaultValue.number?.toString() || `Enter ${variable.name}`}
-          />
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">🔢</span>
-        </div>
+        <input
+          id={inputId}
+          className={inputClass}
+          type="number"
+          inputMode="decimal"
+          value={currentValue?.number?.toString() || ''}
+          onChange={e => handleInputChange(variable.name, 'NUMBER', e.target.value)}
+          onFocus={e => e.target.select()}
+          placeholder={defaultValue.number?.toString() || `Enter ${variable.name}`}
+          aria-describedby={variable.description ? `${inputId}-desc` : undefined}
+        />
       );
     } else if (varType === 'DATETIME') {
       const parts = getDisplayedDateTime(variable.name);
       field = (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex gap-2">
             <input
               id={inputId}
@@ -424,102 +432,92 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
               className={inputClass}
               value={parts.date}
               onChange={e => handleDateTimePartChange(variable.name, 'date', e.target.value)}
+              aria-label={`${variable.name} date`}
             />
             <input
               type="time"
               className={inputClass}
               value={to24h(parts.time)}
               onChange={e => handleDateTimePartChange(variable.name, 'time', e.target.value)}
+              aria-label={`${variable.name} time`}
             />
           </div>
-          <p className="rounded-lg bg-surface px-3 py-1.5 text-xs text-muted">{ARGENTINA_TIMEZONE}</p>
+          <p className="text-sm text-steel">Buenos Aires time (UTC−3)</p>
         </div>
       );
     } else if (varType === 'DICTIONARY') {
       field = renderDictionaryEditor(variable);
     } else {
       field = (
-        <div className="rounded-xl border border-dashed border-line bg-surface p-3">
-          <p className="mb-1 text-xs text-muted">
-            Unsupported input type in this app. The bot default is sent unchanged.
-          </p>
-          <p className="break-words font-mono text-sm text-ink">{formatLockedDefaultDisplay(variable)}</p>
+        <div className="rounded-lg border border-dashed border-line px-3 py-2.5">
+          <p className="text-sm text-steel">This app can't edit this type, so the bot's default is sent:</p>
+          <p className="mt-1 break-words font-medium text-ink">{formatLockedDefaultDisplay(variable)}</p>
         </div>
       );
     }
 
     return (
-      <div key={variable.name} className="rounded-2xl border border-line bg-white p-4 shadow-sm">
-        <div className="mb-1 flex items-start justify-between gap-2">
-          <label htmlFor={inputId} className="break-all font-semibold text-ink">
+      <div key={variable.name} data-row className="px-4 py-4">
+        <div className="mb-2 flex items-baseline justify-between gap-3">
+          <label htmlFor={inputId} className="min-w-0 break-all font-semibold text-ink">
             {variable.name}
           </label>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
-              {variable.type}
-            </span>
-            {!isKnownType ? (
-              <span className="rounded-full bg-muted/15 px-2 py-0.5 text-[11px] font-semibold text-muted">
-                Read-only
-              </span>
-            ) : null}
-          </div>
+          <span className="shrink-0 text-sm text-steel">
+            {variable.type.toLowerCase()}
+            {!isKnownType ? ', fixed' : ''}
+          </span>
         </div>
-        {variable.description ? <p className="mb-2 text-sm text-muted">{variable.description}</p> : null}
-        <div className="mt-2">{field}</div>
+        {variable.description ? (
+          <p id={`${inputId}-desc`} className="-mt-1 mb-2 text-sm text-steel">
+            {variable.description}
+          </p>
+        ) : null}
+        {field}
       </div>
     );
   };
 
   return (
-    <Modal visible={visible} onRequestClose={onClose} variant="sheet">
-      <div className="flex items-center justify-between border-b border-line bg-white px-4 py-3">
-        <button onClick={onClose} className="rounded-lg px-2 py-1.5 font-medium text-danger">
-          Cancel
-        </button>
-        <div className="flex items-center gap-2">
-          <Settings2 size={20} className="text-primary" />
-          <h2 className="text-lg font-bold text-ink">Bot Variables</h2>
-        </div>
-        <button
-          onClick={handleConfirm}
-          disabled={loading}
-          className="rounded-lg bg-primary px-3 py-1.5 font-semibold text-white disabled:opacity-50"
-        >
-          Continue
-        </button>
-      </div>
-
-      {bot && (
-        <div className="flex items-center gap-3 border-b border-line bg-white px-4 py-3">
-          <span className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-2xl">🤖</span>
-          <div className="min-w-0">
-            <p className="break-words font-semibold text-ink">{bot.name}</p>
-            <p className="text-sm text-muted">Configure input variables</p>
+    <Modal visible={visible} onRequestClose={onClose} variant="page" labelledBy="variables-title">
+      <div className="flex h-full flex-col bg-enamel safe-top safe-bottom">
+        <div className="flex items-center gap-2 bg-ink px-2 py-2 text-panel">
+          <button onClick={onClose} className="rounded-lg px-3 py-2 font-medium active:bg-white/10">
+            Cancel
+          </button>
+          <div className="min-w-0 flex-1 text-center">
+            <h2 id="variables-title" className="font-display text-lg font-bold leading-tight">
+              Bot inputs
+            </h2>
+            {bot && <p className="truncate text-xs text-panel/60">{bot.name}</p>}
           </div>
+          <button
+            onClick={handleConfirm}
+            disabled={loading || !!error}
+            className="push-button rounded-lg px-4 py-2 font-semibold"
+          >
+            Run
+          </button>
         </div>
-      )}
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        {loading ? (
-          <LoadingState emoji="⚙️" title="Loading Configuration" subtitle="Retrieving bot variables" />
-        ) : error ? (
-          <ErrorState
-            title="Connection Error"
-            subtitle="Unable to load bot configuration"
-            error={error}
-            onRetry={loadBotVariables}
-          />
-        ) : variables.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
-            <p className="text-muted">This bot doesn't have any input variables to configure.</p>
-            <button onClick={handleConfirm} className="rounded-xl bg-primary px-6 py-3 font-semibold text-white">
-              Continue
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3 p-4">{variables.map(renderVariableInput)}</div>
-        )}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {loading ? (
+            <LoadingState title="Loading inputs" subtitle="Reading the bot's variables" />
+          ) : error ? (
+            <ErrorState title="Couldn't load the inputs" error={error} onRetry={loadBotVariables} />
+          ) : variables.length === 0 ? (
+            <div className="flex flex-1 flex-col items-start justify-center gap-4 p-6">
+              <p className="text-steel">This bot doesn't take any inputs.</p>
+              <button onClick={handleConfirm} className="push-button rounded-lg px-5 py-3 font-semibold">
+                Run
+              </button>
+            </div>
+          ) : (
+            <div className="m-4 divide-y divide-line rounded-xl border border-line bg-panel">
+              <p className="px-4 py-3 text-sm text-steel">Defaults come from the bot. Change what you need, then Run.</p>
+              {variables.map(renderVariableInput)}
+            </div>
+          )}
+        </div>
       </div>
     </Modal>
   );

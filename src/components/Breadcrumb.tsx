@@ -13,26 +13,31 @@ interface BreadcrumbProps {
 
 export const Breadcrumb: React.FC<BreadcrumbProps> = ({ path, onNavigate }) => {
   return (
-    <div className="border-b border-line bg-white">
-      <div className="no-scrollbar flex items-center overflow-x-auto px-4 py-2.5">
+    <nav aria-label="Folder path" className="border-b border-line bg-panel">
+      <ol className="no-scrollbar flex items-center overflow-x-auto px-3 py-2">
         {path.map((item, index) => {
           const isCurrent = index === path.length - 1;
           return (
-            <div key={item.id} className="flex shrink-0 items-center">
-              <button
-                onClick={() => onNavigate(item, index)}
-                disabled={isCurrent}
-                className={`rounded-md px-2 py-1 text-sm transition ${
-                  isCurrent ? 'bg-primary/10 font-semibold text-primary' : 'text-muted hover:text-primary'
-                }`}
-              >
-                {item.name}
-              </button>
-              {!isCurrent && <ChevronRight size={16} className="mx-0.5 text-gray-400" />}
-            </div>
+            <li key={item.id} className="flex shrink-0 items-center">
+              {isCurrent ? (
+                <span aria-current="page" className="px-1.5 py-1 text-sm font-semibold text-ink">
+                  {item.name}
+                </span>
+              ) : (
+                <>
+                  <button
+                    onClick={() => onNavigate(item, index)}
+                    className="rounded px-1.5 py-1 text-sm text-steel underline-offset-2 active:underline"
+                  >
+                    {item.name}
+                  </button>
+                  <ChevronRight aria-hidden size={14} className="text-steel/70" />
+                </>
+              )}
+            </li>
           );
         })}
-      </div>
-    </div>
+      </ol>
+    </nav>
   );
 };

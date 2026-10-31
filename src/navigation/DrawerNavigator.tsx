@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Bot, Activity, History, MonitorSmartphone } from 'lucide-react';
 import logo from '../assets/Logo.jpg';
 import { BotManagerScreen, DeviceStatusScreen, InProgressScreen, HistoricalScreen } from '../screens';
+import { gsap, motionDuration, useGSAP } from '../lib/motion';
 import { useBackHandler } from './backHandler';
 import { DrawerContext } from './drawerContext';
 
@@ -10,20 +11,50 @@ import { DrawerContext } from './drawerContext';
 type RouteName = 'BotManager' | 'InProgress' | 'Historical' | 'DeviceStatus';
 
 const ROUTES: { name: RouteName; label: string; Icon: React.FC<{ size?: number }>; Screen: React.FC }[] = [
-  { name: 'BotManager', label: 'Bot Manager', Icon: Bot, Screen: BotManagerScreen },
-  { name: 'InProgress', label: 'In Progress', Icon: Activity, Screen: InProgressScreen },
+  { name: 'BotManager', label: 'Bots', Icon: Bot, Screen: BotManagerScreen },
+  { name: 'InProgress', label: 'Running now', Icon: Activity, Screen: InProgressScreen },
   { name: 'Historical', label: 'History', Icon: History, Screen: HistoricalScreen },
-  { name: 'DeviceStatus', label: 'Device Status', Icon: MonitorSmartphone, Screen: DeviceStatusScreen },
+  { name: 'DeviceStatus', label: 'Devices', Icon: MonitorSmartphone, Screen: DeviceStatusScreen },
 ];
 
 export const DrawerNavigator = () => {
   const [route, setRoute] = useState<RouteName>('BotManager');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const scrimRef = useRef<HTMLDivElement>(null);
+  const firstRender = useRef(true);
 
   useBackHandler(() => {
     setIsDrawerOpen(false);
     return true;
   }, isDrawerOpen);
+
+  useGSAP(
+    () => {
+      const duration = firstRender.current ? 0 : motionDuration(0.32);
+      firstRender.current = false;
+      gsap.to(navRef.current, {
+        xPercent: isDrawerOpen ? 0 : -100,
+        duration,
+        ease: isDrawerOpen ? 'power3.out' : 'power2.in',
+      });
+      gsap.to(scrimRef.current, {
+        autoAlpha: isDrawerOpen ? 1 : 0,
+        duration: duration ? 0.25 : 0,
+      });
+      if (isDrawerOpen) {
+        gsap.from(navRef.current!.querySelectorAll('[data-nav-item]'), {
+          x: motionDuration(-16),
+          opacity: 0,
+          duration: motionDuration(0.3),
+          stagger: motionDuration(0.04),
+          delay: motionDuration(0.08),
+          ease: 'power2.out',
+        });
+      }
+    },
+    { dependencies: [isDrawerOpen] },
+  );
 
   const { Screen } = ROUTES.find(r => r.name === route)!;
 
@@ -34,34 +65,37 @@ export const DrawerNavigator = () => {
       </div>
 
       <div
-        className={`fixed inset-0 z-40 bg-black/40 transition-opacity ${
-          isDrawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
-        }`}
+        ref={scrimRef}
+        className="invisible fixed inset-0 z-40 bg-ink/50 opacity-0"
         onClick={() => setIsDrawerOpen(false)}
       />
       <nav
-        className={`fixed inset-y-0 left-0 z-40 flex w-70 flex-col bg-white transition-transform duration-300 safe-top ${
-          isDrawerOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
-        }`}
-        aria-hidden={!isDrawerOpen}
+        ref={navRef}
+        aria-label="Main"
+        inert={!isDrawerOpen}
+        // Positioned by GSAP (xPercent); a Tailwind translate class would stack with it.
+        className="fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-ink text-panel safe-top"
       >
-        <div className="flex flex-col items-center border-b border-line px-5 pb-6 pt-8">
-          <img src={logo} alt="" className="mb-3 size-16 rounded-2xl object-contain" />
-          <p className="text-lg font-bold text-ink">Bot Manager</p>
-          <p className="text-sm text-muted">Automation Anywhere</p>
+        <div className="flex items-center gap-3 border-b border-white/10 px-5 py-6">
+          <img src={logo} alt="" className="size-11 rounded-lg bg-white object-contain p-1" />
+          <div>
+            <p className="font-display text-xl font-bold leading-tight">Bot Manager</p>
+            <p className="text-sm text-panel/60">Automation Anywhere</p>
+          </div>
         </div>
         <ul className="flex flex-col gap-1 p-3">
           {ROUTES.map(({ name, label, Icon }) => {
             const active = name === route;
             return (
-              <li key={name}>
+              <li key={name} data-nav-item>
                 <button
                   onClick={() => {
                     setRoute(name);
                     setIsDrawerOpen(false);
                   }}
-                  className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-base font-medium transition ${
-                    active ? 'bg-primary/10 text-primary' : 'text-muted hover:bg-surface'
+                  aria-current={active ? 'page' : undefined}
+                  className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-[17px] font-medium transition-colors ${
+                    active ? 'bg-signal text-ink' : 'text-panel/80 active:bg-white/10'
                   }`}
                 >
                   <Icon size={20} />

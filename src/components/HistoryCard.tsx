@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useId, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { ActivityItem } from '../types';
+import { Lamp, LampState, ProgressBar } from './ui';
+import { gsap, motionDuration, useGSAP } from '../lib/motion';
 
 interface HistoryCardProps {
   activity: ActivityItem;
@@ -45,131 +48,126 @@ const formatDuration = (startTime: string, endTime: string): string => {
   }
 };
 
-const getStatusColor = (status: string): string => {
-  switch (status.toUpperCase()) {
-    case 'COMPLETED':
-      return '#28a745';
-    case 'FAILED':
-    case 'ERROR':
-    case 'RUN_FAILED':
-      return '#dc3545';
-    case 'UPDATE':
-    case 'RUNNING':
-      return '#007bff';
-    default:
-      return '#6c757d';
-  }
+const STATUS: Record<string, { label: string; lamp: LampState; color: string }> = {
+  COMPLETED: { label: 'Completed', lamp: 'on', color: '#1f9d55' },
+  FAILED: { label: 'Failed', lamp: 'off', color: '#d2382b' },
+  ERROR: { label: 'Error', lamp: 'off', color: '#d2382b' },
+  RUN_FAILED: { label: 'Failed', lamp: 'off', color: '#d2382b' },
+  UPDATE: { label: 'Running', lamp: 'wait', color: '#e08a00' },
+  RUNNING: { label: 'Running', lamp: 'wait', color: '#e08a00' },
+  STOPPED: { label: 'Stopped', lamp: 'idle', color: '#626d73' },
+  CANCELLED: { label: 'Cancelled', lamp: 'idle', color: '#626d73' },
+  ABORTED: { label: 'Aborted', lamp: 'idle', color: '#626d73' },
+  RUN_ABORTED: { label: 'Aborted', lamp: 'idle', color: '#626d73' },
 };
 
-const getStatusIcon = (status: string): string => {
-  switch (status.toUpperCase()) {
-    case 'COMPLETED':
-      return '✅';
-    case 'FAILED':
-    case 'ERROR':
-    case 'RUN_FAILED':
-      return '❌';
-    case 'UPDATE':
-    case 'RUNNING':
-      return '⏳';
-    case 'STOPPED':
-    case 'CANCELLED':
-      return '⏹️';
-    case 'ABORTED':
-    case 'RUN_ABORTED':
-      return '🚫';
-    default:
-      return '❓';
-  }
-};
+const statusOf = (status: string) =>
+  STATUS[status.toUpperCase()] ?? { label: status, lamp: 'idle' as LampState, color: '#626d73' };
 
-const DetailRow: React.FC<{ label: string; children: React.ReactNode; mono?: boolean }> = ({
-  label,
-  children,
-  mono,
-}) => (
-  <div className="flex gap-2 text-sm">
-    <span className="w-24 shrink-0 text-muted">{label}</span>
-    <span className={`min-w-0 break-words text-ink ${mono ? 'font-mono text-xs' : ''}`}>{children}</span>
-  </div>
-);
-
-const TimeItem: React.FC<{ label: string; value: string; mono?: boolean }> = ({ label, value, mono }) => (
-  <div className="min-w-0">
-    <p className="text-xs text-muted">{label}</p>
-    <p className={`truncate font-medium text-ink ${mono ? 'font-mono text-xs' : 'text-sm'}`} title={value}>
-      {value}
-    </p>
-  </div>
-);
-
+/** One execution in the history log; details expand on tap. */
 export const HistoryCard: React.FC<HistoryCardProps> = ({ activity }) => {
-  const statusColor = getStatusColor(activity.status);
-  const statusIcon = getStatusIcon(activity.status);
+  const [expanded, setExpanded] = useState(false);
+  const detailsId = useId();
+  const status = statusOf(activity.status);
   const isCompleted = activity.status.toUpperCase() === 'COMPLETED';
   const progressPercentage = isCompleted
     ? 100
     : Math.round((activity.currentLine / activity.totalLines) * 100) || activity.progress || 0;
 
+  const detailsRef = React.useRef<HTMLDivElement>(null);
+  useGSAP(
+    () => {
+      if (!expanded || !detailsRef.current) return;
+      gsap.from(detailsRef.current, {
+        height: 0,
+        opacity: 0,
+        duration: motionDuration(0.28),
+        ease: 'power2.out',
+        clearProps: 'height',
+      });
+    },
+    { dependencies: [expanded] },
+  );
+
   return (
-    <div className="rounded-2xl border-l-4 bg-white p-4 shadow-sm" style={{ borderLeftColor: statusColor }}>
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="break-words font-bold text-ink">{activity.fileName}</p>
-          <p className="break-words text-sm text-muted">{activity.automationName}</p>
-        </div>
-        <div className="flex shrink-0 flex-col items-center">
-          <span
-            className="flex size-9 items-center justify-center rounded-full text-base"
-            style={{ backgroundColor: `${statusColor}22` }}
-          >
-            {statusIcon}
+    <div data-row>
+      <button
+        onClick={() => setExpanded(e => !e)}
+        aria-expanded={expanded}
+        aria-controls={detailsId}
+        className="flex w-full items-start gap-3 px-4 py-3.5 text-left active:bg-enamel"
+      >
+        <Lamp state={status.lamp} className="mt-1.5" />
+        <span className="min-w-0 flex-1">
+          <span className="block break-words font-semibold text-ink">{activity.fileName}</span>
+          <span className="block text-sm text-steel">
+            {status.label}, {formatDateTime(activity.startDateTime)}
           </span>
-          <span className="mt-1 text-[11px] font-bold" style={{ color: statusColor }}>
-            {activity.status}
-          </span>
-        </div>
-      </div>
+        </span>
+        <ChevronDown
+          size={20}
+          className={`mt-0.5 shrink-0 text-steel transition-transform ${expanded ? 'rotate-180' : ''}`}
+        />
+      </button>
 
-      <div className="mb-3 space-y-1.5 rounded-xl bg-surface p-3">
-        <DetailRow label="Device:">📱 {activity.deviceName}</DetailRow>
-        {activity.currentBotName && activity.currentBotName !== activity.fileName && (
-          <DetailRow label="Current Bot:">🤖 {activity.currentBotName}</DetailRow>
-        )}
-        {activity.command && (
-          <DetailRow label="Command:" mono>
-            ⚙️ {activity.command}
-          </DetailRow>
-        )}
-      </div>
+      {expanded && (
+        <div ref={detailsRef} id={detailsId} className="overflow-hidden">
+          <div className="space-y-3 px-4 pb-4 pl-[38px]">
+            <div>
+              <div className="mb-1 flex justify-between text-sm">
+                <span className="text-steel">
+                  Line {activity.currentLine} of {activity.totalLines}
+                </span>
+                <span className="font-semibold text-ink">{progressPercentage}%</span>
+              </div>
+              <ProgressBar value={progressPercentage} color={status.color} label={`${activity.fileName} progress`} />
+            </div>
 
-      <div className="mb-3">
-        <div className="mb-1 flex justify-between text-sm">
-          <span className="font-medium text-ink-soft">Progress</span>
-          <span className="font-bold text-ink">{progressPercentage}%</span>
-        </div>
-        <div className="h-2 overflow-hidden rounded-full bg-line">
-          <div
-            className="h-full rounded-full"
-            style={{ width: `${progressPercentage}%`, backgroundColor: statusColor }}
-          />
-        </div>
-        <p className="mt-1 text-xs text-muted">
-          Line {activity.currentLine} of {activity.totalLines}
-        </p>
-      </div>
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+              <div>
+                <dt className="text-steel">Device</dt>
+                <dd className="break-words font-medium text-ink">{activity.deviceName}</dd>
+              </div>
+              <div>
+                <dt className="text-steel">Duration</dt>
+                <dd className="font-medium text-ink">
+                  {formatDuration(activity.startDateTime, activity.endDateTime)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-steel">Ended</dt>
+                <dd className="font-medium text-ink">
+                  {activity.endDateTime ? formatDateTime(activity.endDateTime) : 'N/A'}
+                </dd>
+              </div>
+              {activity.currentBotName && activity.currentBotName !== activity.fileName && (
+                <div>
+                  <dt className="text-steel">Last bot</dt>
+                  <dd className="break-words font-medium text-ink">{activity.currentBotName}</dd>
+                </div>
+              )}
+              {activity.command && (
+                <div className="col-span-2">
+                  <dt className="text-steel">Last step</dt>
+                  <dd className="break-words font-medium text-ink">{activity.command}</dd>
+                </div>
+              )}
+              <div className="col-span-2">
+                <dt className="text-steel">Deployment ID</dt>
+                <dd className="select-all break-all font-medium text-ink">{activity.deploymentId}</dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-steel">Automation</dt>
+                <dd className="break-all text-ink-soft">{activity.automationName}</dd>
+              </div>
+            </dl>
 
-      <div className="grid grid-cols-2 gap-3">
-        <TimeItem label="Started:" value={formatDateTime(activity.startDateTime)} />
-        <TimeItem label="Ended:" value={activity.endDateTime ? formatDateTime(activity.endDateTime) : 'N/A'} />
-        <TimeItem label="Duration:" value={formatDuration(activity.startDateTime, activity.endDateTime)} />
-        <TimeItem label="Deployment ID:" value={activity.deploymentId} mono />
-      </div>
-
-      {activity.message && (
-        <div className="mt-3 rounded-xl bg-warning/10 p-3">
-          <p className="text-xs font-semibold text-ink-soft">Message:</p>
-          <p className="break-words text-sm text-ink">{activity.message}</p>
+            {activity.message && (
+              <p className="rounded-lg border-l-4 border-amber bg-amber/10 px-3 py-2 text-sm text-ink">
+                {activity.message}
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>
