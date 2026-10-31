@@ -36,6 +36,56 @@ public class RunTrackerPlugin extends Plugin {
         }
         // Alarms are lost on force-stop; opening the app sets them again.
         ScheduleManager.armAll(getContext());
+        DeviceWatcher.arm(getContext());
+    }
+
+    // ----- Device alerts -----
+
+    /** Watched accounts with their last known state (passwords and tokens stay native). */
+    @PluginMethod
+    public void getDeviceAlerts(PluginCall call) {
+        JSArray arr = new JSArray();
+        for (JSONObject a : DeviceWatcher.load(getContext())) {
+            JSObject o = new JSObject();
+            o.put("email", a.optString("email"));
+            o.put("enabled", a.optBoolean("enabled"));
+            o.put("lastStatus", a.optString("lastStatus", "UNKNOWN"));
+            o.put("lastCheckedAt", a.optLong("lastCheckedAt", 0));
+            arr.put(o);
+        }
+        JSObject ret = new JSObject();
+        ret.put("accounts", arr);
+        call.resolve(ret);
+    }
+
+    /** Turns alerts on/off for an account and records its current state as the baseline. */
+    @PluginMethod
+    public void setDeviceAlert(PluginCall call) {
+        try {
+            JSONObject account = new JSONObject()
+                .put("email", call.getString("email"))
+                .put("label", call.getString("label"))
+                .put("password", call.getString("password"))
+                .put("baseUrl", call.getString("baseUrl"));
+            boolean enabled = Boolean.TRUE.equals(call.getBoolean("enabled"));
+            DeviceWatcher.setWatched(getContext(), account, enabled);
+            if (enabled) {
+                // Baseline now (off the main thread), so the first real change can alert.
+                new Thread(() -> DeviceWatcher.runCheck(getContext())).start();
+            }
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Could not change the alert: " + e.getMessage(), e);
+        }
+    }
+
+    /** Runs a check right away (used when returning to the Devices screen and in tests). */
+    @PluginMethod
+    public void checkDevicesNow(PluginCall call) {
+        new Thread(() -> {
+            DeviceWatcher.runCheck(getContext());
+            call.resolve();
+        }).start();
     }
 
     // ----- Schedules -----

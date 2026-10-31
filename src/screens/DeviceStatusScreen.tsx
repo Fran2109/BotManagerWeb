@@ -13,13 +13,14 @@ import {
   LoadingModal,
 } from '../components';
 import { ScreenTitle } from '../components/ScreenWrapper';
-import { Lamp, Panel, RefreshButton, Spinner, StatusBadge, useListEntrance } from '../components/ui';
+import { Lamp, Panel, RefreshButton, Spinner, StatusBadge, Switch, useListEntrance } from '../components/ui';
 import { usePolling } from '../hooks/usePolling';
 import { User } from '../types';
 import { getToken, getDeviceInfo, resetDevice, invalidateCachedDevice } from '../Functions';
 import { deviceAutomationBot } from '../utils/deviceAutomationBot';
 import { StatusStrip } from './SummaryHeader';
 import { describeError } from '../lib/errors';
+import { deviceAlertsSupported, useDeviceAlerts } from '../lib/deviceAlerts';
 
 interface DeviceStatusItemProps {
   user: User;
@@ -30,6 +31,9 @@ interface DeviceStatusItemProps {
   isShutdownRunning: boolean;
   isScreenshotRunning: boolean;
   automationBusy: boolean;
+  /** null when alerts aren't available (web). */
+  alertOn: boolean | null;
+  onAlertChange: (user: User, on: boolean) => void;
 }
 
 const DeviceStatusItem: React.FC<DeviceStatusItemProps> = ({
@@ -41,6 +45,8 @@ const DeviceStatusItem: React.FC<DeviceStatusItemProps> = ({
   isShutdownRunning,
   isScreenshotRunning,
   automationBusy,
+  alertOn,
+  onAlertChange,
 }) => {
   const statusLabel = user.checkingDevice ? 'Checking' : user.deviceConnected ? 'Connected' : 'Disconnected';
   const canUseDeviceActions = !!user.deviceConnected && !user.checkingDevice && !automationBusy;
@@ -69,7 +75,7 @@ const DeviceStatusItem: React.FC<DeviceStatusItemProps> = ({
 
   return (
     // Landscape: identity on the left, actions on the right, so a row is one line tall.
-    <div data-row className="px-4 py-3.5 land:flex land:items-center land:gap-4 land:py-2.5">
+    <div data-row className="px-4 py-3.5 land:flex land:flex-wrap land:items-center land:gap-x-4 land:py-2.5">
       <div className="flex min-w-0 items-center gap-3 land:flex-1">
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-ink">{user.label}</p>
@@ -94,6 +100,13 @@ const DeviceStatusItem: React.FC<DeviceStatusItemProps> = ({
       {!user.checkingDevice && !user.deviceConnected && (
         <p className="mt-2 text-sm text-muted land:sr-only">Actions are available when the device is connected.</p>
       )}
+      {alertOn !== null && (
+        <div className="mt-2 border-t border-line pt-1 land:mt-1 land:basis-full">
+          <Switch value={alertOn} onValueChange={on => onAlertChange(user, on)} hint="Checked every 15 to 30 minutes, even with the app closed">
+            Alert me if it disconnects
+          </Switch>
+        </div>
+      )}
     </div>
   );
 };
@@ -114,6 +127,19 @@ export const DeviceStatusScreen = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const { watched, setAlert } = useDeviceAlerts();
+
+  const handleAlertChange = async (user: User, on: boolean) => {
+    try {
+      if (!(await setAlert(user, on))) {
+        setErrorMessage('Notifications are blocked for Bot Manager. Allow them in Android settings to get device alerts.');
+        setErrorModalVisible(true);
+      }
+    } catch (error) {
+      setErrorMessage(`Couldn't change the alert. ${describeError(error)}`);
+      setErrorModalVisible(true);
+    }
+  };
 
   const handleRefresh = () => {
     setResettingUsers(new Set());
@@ -259,6 +285,8 @@ export const DeviceStatusScreen = () => {
                   isShutdownRunning={executingBots.has(shutdownId)}
                   isScreenshotRunning={executingBots.has(screenshotId)}
                   automationBusy={automationLoading}
+                  alertOn={deviceAlertsSupported() ? watched.has(item.email) : null}
+                  onAlertChange={handleAlertChange}
                 />
               );
             })}

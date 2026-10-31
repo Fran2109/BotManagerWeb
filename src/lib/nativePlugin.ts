@@ -44,6 +44,24 @@ export interface BotManagerNativePlugin {
   deleteSchedule(options: { id: string }): Promise<void>;
   exactAlarmStatus(): Promise<{ exact: boolean }>;
   openExactAlarmSettings(): Promise<void>;
+
+  // PC disconnection alerts (DeviceWatcher)
+  getDeviceAlerts(): Promise<{ accounts: NativeDeviceAlert[] }>;
+  setDeviceAlert(options: {
+    email: string;
+    label: string;
+    password: string;
+    baseUrl: string;
+    enabled: boolean;
+  }): Promise<void>;
+  checkDevicesNow(): Promise<void>;
+}
+
+export interface NativeDeviceAlert {
+  email: string;
+  enabled: boolean;
+  lastStatus: 'CONNECTED' | 'DISCONNECTED' | 'UNKNOWN';
+  lastCheckedAt: number;
 }
 
 export const BotManagerNative = registerPlugin<BotManagerNativePlugin>('RunTracker');

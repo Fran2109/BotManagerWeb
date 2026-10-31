@@ -11,7 +11,8 @@ import org.json.JSONObject;
 
 /**
  * Wakes up for bot schedules: hands a due run to RunTrackerService (exact alarms may start a
- * foreground service from the background) and re-arms the next one. After a reboot or an app
+ * foreground service from the background) and re-arms the next one. Also runs the periodic
+ * device check for disconnection alerts (DeviceWatcher). After a reboot or an app
  * update it re-arms everything; runs whose time passed while the phone was off are reported
  * as missed instead of being launched late.
  */
@@ -21,6 +22,21 @@ public class ScheduleReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
+        if (DeviceWatcher.ACTION_CHECK.equals(action)) {
+            // Device alerts: a few quick requests, done off the main thread within the
+            // broadcast's time budget (no foreground service or notification needed).
+            boolean confirm = intent.getBooleanExtra("confirm", false);
+            PendingResult result = goAsync();
+            new Thread(() -> {
+                try {
+                    DeviceWatcher.runCheck(context);
+                    if (!confirm) DeviceWatcher.arm(context);
+                } finally {
+                    result.finish();
+                }
+            }).start();
+            return;
+        }
         if (ScheduleManager.ACTION_ALARM.equals(action)) {
             String id = intent.getStringExtra("id");
             long at = intent.getLongExtra("at", System.currentTimeMillis());
@@ -59,6 +75,7 @@ public class ScheduleReceiver extends BroadcastReceiver {
                 }
             }
             ScheduleManager.armAll(context);
+            DeviceWatcher.arm(context);
         }
     }
 }
