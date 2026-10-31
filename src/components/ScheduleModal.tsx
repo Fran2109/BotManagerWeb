@@ -44,7 +44,7 @@ const chip = (selected: boolean) =>
   }`;
 
 const inputClass =
-  'min-h-11 w-full rounded-md border border-line bg-white px-3 text-[0.9375rem] text-ink outline-none focus:border-brand-strong focus:ring-2 focus:ring-brand/30';
+  'min-h-11 w-full rounded-md border border-line bg-surface px-3 text-[0.9375rem] text-ink outline-none focus:border-brand-strong focus:ring-2 focus:ring-brand/30';
 
 /** Form to schedule a bot from the phone (see lib/schedules.ts). */
 export const ScheduleModal: React.FC<ScheduleModalProps> = ({ visible, bot, saving, error, onSave, onClose }) => {

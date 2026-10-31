@@ -42,11 +42,11 @@ const formatDuration = (startTime: string): string => {
 };
 
 const getProgressColor = (progress: number): string => {
-  if (progress === 0) return '#626d73';
-  if (progress < 25) return '#d2382b';
-  if (progress < 50) return '#e08a00';
-  if (progress < 75) return '#2f7fb5';
-  return '#1f9d55';
+  if (progress === 0) return 'var(--color-muted)';
+  if (progress < 25) return 'var(--color-fail)';
+  if (progress < 50) return 'var(--color-warn)';
+  if (progress < 75) return 'var(--color-run)';
+  return 'var(--color-ok)';
 };
 
 /** One account row on the In progress screen, with Control Room status labels. */

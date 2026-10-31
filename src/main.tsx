@@ -6,8 +6,10 @@ import '@fontsource/ibm-plex-sans/700.css';
 import './index.css';
 import App from './App';
 import { installBackButton } from './navigation/backHandler';
+import { initTheme } from './lib/theme';
 
 installBackButton();
+initTheme();
 
 // <input type="checkbox" switch> is native only in Safari; the Android WebView needs the
 // polyfill. It is vendored in public/ because it fetches its CSS relative to its own URL,

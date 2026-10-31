@@ -32,7 +32,7 @@ interface BotVariablesModalProps {
 }
 
 const inputClass =
-  'w-full min-w-0 rounded-lg border border-line bg-white px-3.5 py-2.5 text-base text-ink outline-none transition placeholder:text-muted/60 focus:border-ink focus:ring-2 focus:ring-brand';
+  'w-full min-w-0 rounded-lg border border-line bg-surface px-3.5 py-2.5 text-base text-ink outline-none transition placeholder:text-muted/60 focus:border-ink focus:ring-2 focus:ring-brand';
 
 const getDateTimeParts = (value?: string): { date: string; time: string } => {
   if (!value) {

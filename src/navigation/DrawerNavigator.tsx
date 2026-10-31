@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bot, Activity, CalendarClock, ChartColumn, History, MonitorSmartphone } from 'lucide-react';
+import { Bot, Activity, CalendarClock, ChartColumn, History, Monitor, MonitorSmartphone, Moon, Sun } from 'lucide-react';
 import logo from '../assets/Logo.jpg';
 import { BotManagerScreen, DeviceStatusScreen, InProgressScreen, HistoricalScreen, ScheduledScreen, StatisticsScreen } from '../screens';
 import { gsap, motionDuration, useGSAP } from '../lib/motion';
 import { useBackHandler } from './backHandler';
 import { DrawerContext, ROUTE_META, RouteName } from './drawerContext';
 import { initRunTracker } from '../lib/runTracker';
+import { ThemePreference, setThemePreference, useThemePreference } from '../lib/theme';
 
 // Replaces @react-navigation/drawer: one screen is mounted at a time, so leaving a
 // screen unmounts it (equivalent to the old useFocusEffect cleanups). The drawer is
@@ -24,6 +25,43 @@ const GROUPS: { title: string; routes: RouteName[] }[] = [
   { title: 'Activity', routes: ['InProgress', 'Historical', 'Scheduled', 'Statistics'] },
   { title: 'Manage', routes: ['Devices'] },
 ];
+
+const THEME_OPTIONS: { value: ThemePreference; label: string; Icon: typeof Sun }[] = [
+  { value: 'system', label: 'System', Icon: Monitor },
+  { value: 'light', label: 'Light', Icon: Sun },
+  { value: 'dark', label: 'Dark', Icon: Moon },
+];
+
+/** Appearance switcher at the foot of the menu (lib/theme.ts). */
+const ThemeSwitcher = () => {
+  const preference = useThemePreference();
+  return (
+    <div className="border-t border-white/10 px-5 pb-4 pt-3 safe-bottom land:pb-2 land:pt-2">
+      <p id="appearance-label" className="pb-2 text-sm font-medium text-white/50">
+        Appearance
+      </p>
+      <div role="radiogroup" aria-labelledby="appearance-label" className="flex gap-1 rounded-lg bg-white/5 p-1">
+        {THEME_OPTIONS.map(({ value, label, Icon }) => {
+          const selected = preference === value;
+          return (
+            <button
+              key={value}
+              role="radio"
+              aria-checked={selected}
+              onClick={() => setThemePreference(value)}
+              className={`flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-md text-sm transition-colors ${
+                selected ? 'bg-nav-soft font-semibold text-white' : 'text-white/70 active:bg-white/10'
+              }`}
+            >
+              <Icon size={16} />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 export const DrawerNavigator = () => {
   const [route, setRoute] = useState<RouteName>('Bots');
@@ -80,7 +118,7 @@ export const DrawerNavigator = () => {
 
       <div
         ref={scrimRef}
-        className="invisible fixed inset-0 z-40 bg-ink/50 opacity-0"
+        className="invisible fixed inset-0 z-40 bg-backdrop opacity-0"
         onClick={() => setIsDrawerOpen(false)}
       />
       <nav
@@ -129,6 +167,7 @@ export const DrawerNavigator = () => {
             </div>
           ))}
         </div>
+        <ThemeSwitcher />
       </nav>
     </DrawerContext.Provider>
   );

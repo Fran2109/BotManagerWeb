@@ -22,6 +22,12 @@
   --color-fail: #cf222e;
   --color-run: #0969da;
   --color-warn: #b35900;
+  /* Text on brand/fail fills: white in light, near-black in dark (where fills are brighter). */
+  --color-on-accent: #ffffff;
+  --color-skeleton: #e6e9ed;
+  --color-lamp-idle: #8c959f;
+  --color-folder: #f9d58b;
+  --color-backdrop: rgb(31 35 40 / 0.5);
 
   --animate-lamp-wait: lamp-wait 1.2s ease-in-out infinite;
   --animate-shimmer: shimmer 1.4s ease-in-out infinite;
@@ -47,6 +53,62 @@
   --inset-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
   --inset-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
   --inset-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+}
+
+:root {
+  color-scheme: light;
+}
+
+/* Dark theme: the phone's setting ("system", no data-theme) or the choice in the menu
+   (data-theme on <html>, see lib/theme.ts). Same token names, so components don't change. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-nav: #1f2023;
+    --color-nav-soft: #34363a;
+    --color-page: #0f1012;
+    --color-surface: #191a1d;
+    --color-ink: #e6e8eb;
+    --color-ink-soft: #c5cad1;
+    --color-muted: #9aa3ad;
+    --color-line: #33363c;
+    --color-brand: #f26b3a;
+    --color-brand-strong: #f47a4b;
+    --color-brand-tint: #3a2117;
+    --color-on-accent: #170904;
+    --color-ok: #3fb950;
+    --color-fail: #f85149;
+    --color-run: #58a6ff;
+    --color-warn: #d29922;
+    --color-skeleton: #2a2c30;
+    --color-lamp-idle: #6e7681;
+    --color-folder: #8a6d2c;
+    --color-backdrop: rgb(0 0 0 / 0.6);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-nav: #1f2023;
+  --color-nav-soft: #34363a;
+  --color-page: #0f1012;
+  --color-surface: #191a1d;
+  --color-ink: #e6e8eb;
+  --color-ink-soft: #c5cad1;
+  --color-muted: #9aa3ad;
+  --color-line: #33363c;
+  --color-brand: #f26b3a;
+  --color-brand-strong: #f47a4b;
+  --color-brand-tint: #3a2117;
+  --color-on-accent: #170904;
+  --color-ok: #3fb950;
+  --color-fail: #f85149;
+  --color-run: #58a6ff;
+  --color-warn: #d29922;
+  --color-skeleton: #2a2c30;
+  --color-lamp-idle: #6e7681;
+  --color-folder: #8a6d2c;
+  --color-backdrop: rgb(0 0 0 / 0.6);
+  color-scheme: dark;
 }
 
 html,
@@ -118,7 +180,7 @@ button:disabled {
   height: 0.625rem;
   flex-shrink: 0;
   border-radius: 9999px;
-  background: #8c959f;
+  background: var(--color-lamp-idle);
 }
 
 .lamp[data-state="on"] {
@@ -144,7 +206,7 @@ button:disabled {
 /* Loading placeholder shaped like the content it replaces. */
 .skeleton {
   border-radius: 0.25rem;
-  background: #e6e9ed;
+  background: var(--color-skeleton);
   animation: var(--animate-shimmer);
 
   @media (prefers-reduced-motion: reduce) {
@@ -169,7 +231,7 @@ dialog:modal {
 dialog::backdrop {
   overflow: hidden;
   overscroll-behavior: contain;
-  background: rgb(31 35 40 / 0.5);
+  background: var(--color-backdrop);
 }
 
 dialog[open]::backdrop {

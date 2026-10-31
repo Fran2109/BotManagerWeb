@@ -5,10 +5,10 @@ import type { StatusTone } from '../components/ui';
 // last-run line in the bot list.
 
 // Labels as the Control Room shows them in Activity > Historical.
-export const OK = { tone: 'ok' as StatusTone, Icon: CircleCheck, color: '#1a7f37' };
-const FAIL = { tone: 'fail' as StatusTone, Icon: CircleX, color: '#cf222e' };
-const RUN = { tone: 'run' as StatusTone, Icon: Loader, color: '#0969da' };
-const STOP = { tone: 'neutral' as StatusTone, Icon: CircleSlash, color: '#59636e' };
+export const OK = { tone: 'ok' as StatusTone, Icon: CircleCheck, color: 'var(--color-ok)' };
+const FAIL = { tone: 'fail' as StatusTone, Icon: CircleX, color: 'var(--color-fail)' };
+const RUN = { tone: 'run' as StatusTone, Icon: Loader, color: 'var(--color-run)' };
+const STOP = { tone: 'neutral' as StatusTone, Icon: CircleSlash, color: 'var(--color-muted)' };
 
 export const STATUS: Record<string, { label: string } & typeof OK> = {
   COMPLETED: { label: 'Completed', ...OK },

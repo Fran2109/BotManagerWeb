@@ -233,9 +233,9 @@ const buttonBase =
 
 export const buttonStyles = {
   /** AA orange, for the one main action of a screen or dialog. */
-  primary: `${buttonBase} bg-brand-strong px-4 py-2.5 text-white active:brightness-90`,
+  primary: `${buttonBase} bg-brand-strong px-4 py-2.5 text-on-accent active:brightness-90`,
   secondary: `${buttonBase} border border-line bg-surface px-4 py-2.5 text-ink active:bg-page`,
-  danger: `${buttonBase} bg-fail px-4 py-2.5 text-white active:brightness-90`,
+  danger: `${buttonBase} bg-fail px-4 py-2.5 text-on-accent active:brightness-90`,
   ghost: `${buttonBase} px-2 text-ink-soft active:bg-page`,
 };
 

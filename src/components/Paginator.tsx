@@ -119,7 +119,7 @@ export const Paginator: React.FC<PaginatorProps> = ({
                 aria-label={`Page ${page + 1}`}
                 aria-current={current ? 'page' : undefined}
                 className={`flex size-11 shrink-0 items-center justify-center rounded-md text-sm font-semibold ${Math.abs(page - currentPage) >= 2 ? narrowHidden : ''} ${
-                  current ? 'bg-brand-strong text-white' : 'text-ink active:bg-page'
+                  current ? 'bg-brand-strong text-on-accent' : 'text-ink active:bg-page'
                 }`}
               >
                 {page + 1}

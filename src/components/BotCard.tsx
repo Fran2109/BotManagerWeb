@@ -39,7 +39,7 @@ export const BotCard: React.FC<BotCardProps> = ({
         disabled={isDisabled}
         className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left active:bg-page"
       >
-        <Folder size={20} className="shrink-0 text-warn" fill="#f9d58b" strokeWidth={1.75} />
+        <Folder size={20} className="shrink-0 text-warn" fill="var(--color-folder)" strokeWidth={1.75} />
         <span className="min-w-0 flex-1 break-words text-[0.9375rem] text-ink">{bot.name}</span>
         <ChevronRight size={18} className="shrink-0 text-muted" />
       </button>
