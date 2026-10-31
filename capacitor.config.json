@@ -1,0 +1,10 @@
+{
+  "appId": "com.botmanager.web",
+  "appName": "Bot Manager",
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}
