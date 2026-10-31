@@ -684,11 +684,10 @@ export const resetDevice = async (deviceId: string, token: string, userEmail: st
     }
 };
 
-interface ActivityFilter {
-    operator: "eq";
-    field: "status";
-    value: "UPDATE";
-}
+// Control Room list filters: leaf comparisons combined with and/or over "operands".
+type ActivityFilter =
+    | { operator: "eq" | "gt" | "ge" | "lt" | "le"; field: string; value: string }
+    | { operator: "and" | "or"; operands: ActivityFilter[] };
 
 interface ActivitySort {
     field: "startDateTime";
@@ -796,12 +795,34 @@ export const getRunningActivities = async (username: string, token: string): Pro
 };
 
 interface HistoryParams {
+    filter?: ActivityFilter;
     sort: ActivitySort[];
     page: {
         offset: number;
         length: number;
     };
 }
+
+/** Server-side filters for Activity > Historical. */
+export interface HistoryFilter {
+    /** Any of these statuses (e.g. RUN_FAILED); empty or undefined = all. */
+    statuses?: string[];
+    /** Only runs that started at or after this ISO date-time. */
+    since?: string;
+}
+
+const buildHistoryFilter = (filter?: HistoryFilter): ActivityFilter | undefined => {
+    const parts: ActivityFilter[] = [];
+    if (filter?.statuses?.length) {
+        const byStatus: ActivityFilter[] = filter.statuses.map(value => ({ operator: "eq", field: "status", value }));
+        parts.push(byStatus.length === 1 ? byStatus[0] : { operator: "or", operands: byStatus });
+    }
+    if (filter?.since) {
+        parts.push({ operator: "ge", field: "startDateTime", value: filter.since });
+    }
+    if (parts.length === 0) return undefined;
+    return parts.length === 1 ? parts[0] : { operator: "and", operands: parts };
+};
 
 interface HistoryData {
     page: {
@@ -816,11 +837,13 @@ export const getExecutionHistory = async (
     username: string,
     token: string,
     offset: number = 0,
-    length: number = 20
+    length: number = 20,
+    filter?: HistoryFilter
 ): Promise<HistoryData> => {
     configureBaseURL(username);
 
     const params: HistoryParams = {
+        filter: buildHistoryFilter(filter),
         sort: [
             {
                 field: "startDateTime",

@@ -1,10 +1,11 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { AVAILABLE_USERS } from '../constants/users';
 import { useExecutionHistory } from '../hooks/useExecutionHistory';
 import { useBackHandler } from '../navigation/backHandler';
 import { ScreenWrapper, HistoryCard, Paginator } from '../components';
 import { ScreenTitle } from '../components/ScreenWrapper';
+import { HistoryFilters, PeriodKey, StatusKey, toHistoryFilter } from '../components/HistoryFilters';
 import { ErrorState, Panel, RefreshButton, SkeletonRows, buttonStyles, initials, useListEntrance } from '../components/ui';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100, 200];
@@ -24,7 +25,22 @@ export const HistoricalScreen = () => {
     changePageSize,
     refresh,
     clearSelection,
+    changeFilter,
   } = useExecutionHistory();
+  const [statusKey, setStatusKey] = useState<StatusKey>('all');
+  const [periodKey, setPeriodKey] = useState<PeriodKey>('any');
+  const isFiltered = statusKey !== 'all' || periodKey !== 'any';
+
+  const applyFilters = (status: StatusKey, period: PeriodKey) => {
+    setStatusKey(status);
+    setPeriodKey(period);
+    changeFilter(toHistoryFilter(status, period));
+  };
+
+  const plural = (n: number) => `${n} run${n === 1 ? '' : 's'}`;
+  const resultsLabel = isFiltered
+    ? `${plural(totalExecutions)} match. Tap a row for details.`
+    : 'Newest first. Tap a row for details.';
   const listRef = useRef<HTMLDivElement>(null);
 
   // Android back button returns to the account list.
@@ -73,7 +89,16 @@ export const HistoricalScreen = () => {
   } else if (loading && history.length === 0) {
     body = <SkeletonRows label="Loading activity" />;
   } else if (history.length === 0) {
-    body = <p className="px-4 py-10 text-muted">No completed activity for {selectedUser.label} yet.</p>;
+    body = isFiltered ? (
+      <div className="px-4 py-10">
+        <p className="text-ink">No runs match these filters.</p>
+        <button onClick={() => applyFilters('all', 'any')} className={`${buttonStyles.ghost} -ml-2 mt-1 text-brand-strong`}>
+          Clear filters
+        </button>
+      </div>
+    ) : (
+      <p className="px-4 py-10 text-muted">No completed activity for {selectedUser.label} yet.</p>
+    );
   } else {
     body = (
       <div
@@ -81,7 +106,7 @@ export const HistoricalScreen = () => {
         aria-busy={loading}
         className={`mx-auto mb-4 w-full max-w-3xl px-3 transition-opacity ${loading ? 'opacity-50' : ''}`}
       >
-        <Panel header="Newest first. Tap a row for details.">
+        <Panel header={<span aria-live="polite">{resultsLabel}</span>}>
           {history.map(item => (
             <HistoryCard key={item.id} activity={item} />
           ))}
@@ -102,6 +127,7 @@ export const HistoricalScreen = () => {
             subtitle={selectedUser.email}
             action={<RefreshButton onClick={refresh} busy={loading} busyLabel="Loading" />}
           />
+          <HistoryFilters status={statusKey} period={periodKey} onChange={applyFilters} />
         </div>
         {body}
       </div>

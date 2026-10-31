@@ -68,7 +68,13 @@ Los 17 hallazgos, con la estética del Control Room:
 - **Tipografía:** IBM Plex Sans (enterprise, números tabulares).
 - **Listas:** filas tipo tabla con etiquetas de estado.
 
+## Segunda pasada: filtros en Historical
+
+- **Filtros por estado y fecha en Historical**, como en el Control Room: chips de estado (All, Completed, Failed, Run aborted) y de inicio (Any time, últimas 24 horas, 7 días o 30 días).
+  - El Control Room aplica el filtro (`filter` con `and`/`or` en `v3/activity/list`), así que los totales y la paginación cubren todas las ejecuciones que coinciden y no solo la página cargada.
+  - Verificado contra Francisco 1: 228 ejecuciones = 131 Completed + 50 Run aborted + 47 Failed.
+- Al probarlo apareció un estado que no estaba contemplado, `DEPLOY_FAILED` (8 ejecuciones), que se mostraba sin traducir. Ahora se muestra como "Deploy failed" y entra en el filtro Failed.
+
 ## Queda para después
 
-- **Filtros por estado y fecha en Historical** (como en el Control Room). Requiere pasar los filtros a la API `v3/activity/list`; filtrar solo la página cargada daría resultados engañosos.
 - **Pausar o detener ejecuciones desde In progress.** El Control Room lo permite, pero es una acción nueva sobre la API, no una mejora de UI.

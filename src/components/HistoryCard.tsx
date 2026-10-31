@@ -59,6 +59,7 @@ const STATUS: Record<string, { label: string } & typeof OK> = {
   FAILED: { label: 'Run failed', ...FAIL },
   ERROR: { label: 'Run failed', ...FAIL },
   RUN_FAILED: { label: 'Run failed', ...FAIL },
+  DEPLOY_FAILED: { label: 'Deploy failed', ...FAIL },
   UPDATE: { label: 'In progress', ...RUN },
   RUNNING: { label: 'In progress', ...RUN },
   STOPPED: { label: 'Stopped', ...STOP },

@@ -1,17 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { User, ActivityItem } from '../types';
-import { getToken, getExecutionHistory } from '../Functions';
+import { getToken, getExecutionHistory, HistoryFilter } from '../Functions';
 import { DEFAULT_PASSWORD } from '../constants/users';
 import { describeError } from '../lib/errors';
-
-interface HistoryData {
-  page: {
-    offset: number;
-    total: number;
-    totalFilter: number;
-  };
-  list: ActivityItem[];
-}
 
 export const useExecutionHistory = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -23,35 +14,43 @@ export const useExecutionHistory = () => {
   const [totalExecutions, setTotalExecutions] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [hasMore, setHasMore] = useState(false);
+  // Status/date filters are applied by the Control Room, so totals and pages cover every
+  // matching run, not just the loaded page.
+  const [filter, setFilter] = useState<HistoryFilter>({});
+  const filterRef = useRef(filter);
+  // Only the latest request may update the list (filters can change faster than replies).
+  const requestId = useRef(0);
 
   const fetchHistory = useCallback(async (
-    user: User, 
-    page: number = 0, 
-    currentPageSize: number = pageSize
+    user: User,
+    page: number = 0,
+    currentPageSize: number = pageSize,
+    currentFilter: HistoryFilter = filterRef.current,
   ) => {
+    const id = ++requestId.current;
     try {
       setLoading(true);
       setError(null);
 
       const token = await getToken(user.email, DEFAULT_PASSWORD);
       const offset = page * currentPageSize;
-      
-      const historyData = await getExecutionHistory(user.email, token, offset, currentPageSize);
-      
-      const newExecutions = historyData.list || [];
-      
-      setHistory(newExecutions);
-      setCurrentPage(page);
-      setTotalExecutions(historyData.page.totalFilter || historyData.page.total || 0);
-      setTotalPages(Math.ceil((historyData.page.totalFilter || historyData.page.total || 0) / currentPageSize));
-      setHasMore((offset + currentPageSize) < (historyData.page.totalFilter || historyData.page.total || 0));
 
+      const historyData = await getExecutionHistory(user.email, token, offset, currentPageSize, currentFilter);
+      if (id !== requestId.current) return;
+
+      const total = historyData.page.totalFilter ?? historyData.page.total ?? 0;
+      setHistory(historyData.list || []);
+      setCurrentPage(page);
+      setTotalExecutions(total);
+      setTotalPages(Math.ceil(total / currentPageSize));
+      setHasMore(offset + currentPageSize < total);
     } catch (err: any) {
+      if (id !== requestId.current) return;
       console.error('Error fetching execution history:', err);
       setError(describeError(err));
       setHistory([]);
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   }, [pageSize]);
 
@@ -80,6 +79,16 @@ export const useExecutionHistory = () => {
     }
   }, [selectedUser, fetchHistory]);
 
+  /** Applies new filters and goes back to the first page. */
+  const changeFilter = useCallback((next: HistoryFilter) => {
+    filterRef.current = next;
+    setFilter(next);
+    if (selectedUser) {
+      setCurrentPage(0);
+      fetchHistory(selectedUser, 0, pageSize, next);
+    }
+  }, [selectedUser, fetchHistory, pageSize]);
+
   const refresh = useCallback(() => {
     if (selectedUser) {
       fetchHistory(selectedUser, currentPage, pageSize);
@@ -87,6 +96,7 @@ export const useExecutionHistory = () => {
   }, [selectedUser, currentPage, pageSize, fetchHistory]);
 
   const clearSelection = useCallback(() => {
+    requestId.current++;
     setSelectedUser(null);
     setHistory([]);
     setCurrentPage(0);
@@ -94,6 +104,7 @@ export const useExecutionHistory = () => {
     setTotalExecutions(0);
     setHasMore(false);
     setError(null);
+    setLoading(false);
   }, []);
 
   return {
@@ -106,9 +117,11 @@ export const useExecutionHistory = () => {
     totalExecutions,
     pageSize,
     hasMore,
+    filter,
     selectUser,
     goToPage,
     changePageSize,
+    changeFilter,
     refresh,
     clearSelection,
   };
