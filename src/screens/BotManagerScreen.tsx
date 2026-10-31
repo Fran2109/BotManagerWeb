@@ -19,6 +19,7 @@ import {
 } from '../components';
 import { ErrorState, Panel, SkeletonRows, buttonStyles, useListEntrance } from '../components/ui';
 import { describeError } from '../lib/errors';
+import { trackRun } from '../lib/runTracker';
 
 const DEVICE_NOT_CONNECTED_MESSAGE =
   "The PC for this account is offline, so the bot can't start. Check it in Devices.";
@@ -31,6 +32,7 @@ export const BotManagerScreen = () => {
   const [preExecutionLoading, setPreExecutionLoading] = useState(false);
   const [preExecutionMessage, setPreExecutionMessage] = useState('');
   const launchHideBotAgentUiRef = useRef(false);
+  const launchNotifyRef = useRef(false);
 
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
@@ -38,6 +40,7 @@ export const BotManagerScreen = () => {
   const [executionResult, setExecutionResult] = useState<{
     botName: string;
     deploymentId?: string;
+    notifying?: boolean;
     errorMessage?: string;
     errorType?: 'execution' | 'device' | 'network';
     userLabel?: string;
@@ -79,7 +82,10 @@ export const BotManagerScreen = () => {
       bot,
       userEmail,
       (botName: string, deploymentId: string) => {
-        setExecutionResult({ botName, deploymentId });
+        if (launchNotifyRef.current) {
+          void trackRun(deploymentId, userEmail, botName);
+        }
+        setExecutionResult({ botName, deploymentId, notifying: launchNotifyRef.current });
         setSuccessModalVisible(true);
       },
       (errorMessage: string) => {
@@ -95,8 +101,9 @@ export const BotManagerScreen = () => {
     );
   };
 
-  const handleUserSelection = async (bot: Bot, userEmail: string, hideBotAgentUi: boolean) => {
+  const handleUserSelection = async (bot: Bot, userEmail: string, hideBotAgentUi: boolean, notifyProgress: boolean) => {
     launchHideBotAgentUiRef.current = hideBotAgentUi;
+    launchNotifyRef.current = notifyProgress;
     setModalVisible(false);
     setSelectedBot(bot);
     setSelectedUserEmail(userEmail);
@@ -256,8 +263,8 @@ export const BotManagerScreen = () => {
         selectedBot={selectedBot}
         users={AVAILABLE_USERS}
         loading={loading || preExecutionLoading}
-        onUserSelect={(userEmail, hideBotAgentUi) =>
-          selectedBot && handleUserSelection(selectedBot, userEmail, hideBotAgentUi)
+        onUserSelect={(userEmail, hideBotAgentUi, notifyProgress) =>
+          selectedBot && handleUserSelection(selectedBot, userEmail, hideBotAgentUi, notifyProgress)
         }
         onClose={() => setModalVisible(false)}
       />
@@ -283,6 +290,7 @@ export const BotManagerScreen = () => {
         visible={successModalVisible}
         botName={executionResult?.botName || ''}
         deploymentId={executionResult?.deploymentId || ''}
+        notifying={!!executionResult?.notifying}
         onConfirm={() => {
           setSuccessModalVisible(false);
           setExecutionResult(null);

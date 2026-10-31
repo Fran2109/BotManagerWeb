@@ -3,13 +3,24 @@ import { ChevronRight } from 'lucide-react';
 import { Bot, User } from '../types';
 import { useDeviceStatus } from '../hooks/useDeviceStatus';
 import { Lamp, Modal, Sheet, Switch, buttonStyles } from './ui';
+import { ensureNotifications } from '../lib/runTracker';
+
+const NOTIFY_PREF_KEY = 'botmanager:notify-progress';
+
+const readNotifyPref = () => {
+  try {
+    return localStorage.getItem(NOTIFY_PREF_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
 
 interface UserSelectionModalProps {
   visible: boolean;
   selectedBot: Bot | null;
   users: User[];
   loading: boolean;
-  onUserSelect: (userEmail: string, hideBotAgentUi: boolean) => void;
+  onUserSelect: (userEmail: string, hideBotAgentUi: boolean, notifyProgress: boolean) => void;
   onClose: () => void;
 }
 
@@ -23,12 +34,29 @@ export const UserSelectionModal: React.FC<UserSelectionModalProps> = ({
 }) => {
   const { usersWithDeviceStatus, checkDevicesStatus } = useDeviceStatus();
   const [hideBotAgentUi, setHideBotAgentUi] = useState(false);
+  // Remembered between launches, unlike "Run in background".
+  const [notifyProgress, setNotifyProgress] = useState(readNotifyPref);
+  const [notifyBlocked, setNotifyBlocked] = useState(false);
 
   useEffect(() => {
     if (visible) {
       setHideBotAgentUi(false);
+      setNotifyBlocked(false);
     }
   }, [visible]);
+
+  const changeNotify = async (on: boolean) => {
+    // Ask for permission right when the option is turned on, so the prompt has context.
+    const allowed = on ? await ensureNotifications().catch(() => false) : true;
+    setNotifyBlocked(on && !allowed);
+    const next = on && allowed;
+    setNotifyProgress(next);
+    try {
+      localStorage.setItem(NOTIFY_PREF_KEY, next ? '1' : '0');
+    } catch {
+      // Not remembered; the option still applies to this launch.
+    }
+  };
 
   useEffect(() => {
     if (visible && users.length > 0) {
@@ -54,10 +82,26 @@ export const UserSelectionModal: React.FC<UserSelectionModalProps> = ({
           <p className="mt-1 text-muted">Pick the account whose device should run it.</p>
         </div>
 
-        <div className="mx-5 rounded-lg border border-line bg-page/50 px-4 py-3">
-          <Switch value={hideBotAgentUi} onValueChange={setHideBotAgentUi} hint="The bot runs without opening its window on the PC">
-            Run in background
-          </Switch>
+        <div className="mx-5 divide-y divide-line rounded-lg border border-line bg-page/50 px-4">
+          <div className="py-2">
+            <Switch value={hideBotAgentUi} onValueChange={setHideBotAgentUi} hint="The bot runs without opening its window on the PC">
+              Run in background
+            </Switch>
+          </div>
+          <div className="py-2">
+            <Switch
+              value={notifyProgress}
+              onValueChange={changeNotify}
+              hint="Shows its progress in a notification and alerts you when it finishes"
+            >
+              Notify me while it runs
+            </Switch>
+            {notifyBlocked && (
+              <p role="alert" className="mt-1 text-sm text-fail">
+                Notifications are blocked for Bot Manager. Allow them in the phone's settings, then try again.
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="mt-5 flex items-baseline justify-between px-5 pb-2">
@@ -79,7 +123,7 @@ export const UserSelectionModal: React.FC<UserSelectionModalProps> = ({
               return (
                 <li key={item.id}>
                   <button
-                    onClick={() => onUserSelect(item.email, hideBotAgentUi)}
+                    onClick={() => onUserSelect(item.email, hideBotAgentUi, notifyProgress)}
                     disabled={isDisabled}
                     className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-page disabled:opacity-55"
                   >

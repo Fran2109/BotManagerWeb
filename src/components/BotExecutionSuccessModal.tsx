@@ -7,6 +7,8 @@ interface BotExecutionSuccessModalProps {
   visible: boolean;
   botName: string;
   deploymentId: string;
+  /** The run is being followed with notifications (see lib/runTracker). */
+  notifying?: boolean;
   onConfirm: () => void;
 }
 
@@ -14,6 +16,7 @@ export const BotExecutionSuccessModal: React.FC<BotExecutionSuccessModalProps> =
   visible,
   botName,
   deploymentId,
+  notifying = false,
   onConfirm,
 }) => {
   const { navigate } = useDrawer();
@@ -26,7 +29,11 @@ export const BotExecutionSuccessModal: React.FC<BotExecutionSuccessModalProps> =
           <h2 id="launched-title" className="mt-3 text-xl font-semibold text-ink">
             {botName} is running
           </h2>
-          <p className="mt-1 text-muted">It now appears in Activity, under In progress.</p>
+          <p className="mt-1 text-muted">
+            {notifying
+              ? "It now appears in Activity, under In progress. A notification will show its progress and tell you when it finishes."
+              : 'It now appears in Activity, under In progress.'}
+          </p>
 
           <dl className="mt-4 rounded-md border border-line bg-page px-4 py-3 text-sm">
             <dt className="text-muted">Deployment ID</dt>

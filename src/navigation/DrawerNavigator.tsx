@@ -1,10 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Bot, Activity, History, MonitorSmartphone } from 'lucide-react';
 import logo from '../assets/Logo.jpg';
 import { BotManagerScreen, DeviceStatusScreen, InProgressScreen, HistoricalScreen } from '../screens';
 import { gsap, motionDuration, useGSAP } from '../lib/motion';
 import { useBackHandler } from './backHandler';
 import { DrawerContext, ROUTE_META, RouteName } from './drawerContext';
+import { initRunTracker } from '../lib/runTracker';
 
 // Replaces @react-navigation/drawer: one screen is mounted at a time, so leaving a
 // screen unmounts it (equivalent to the old useFocusEffect cleanups). The drawer is
@@ -55,6 +56,15 @@ export const DrawerNavigator = () => {
     setRoute(next);
     setIsDrawerOpen(false);
   };
+
+  // Tapping a bot notification opens its screen; runs followed before the app was closed
+  // are picked up again.
+  useEffect(() => {
+    void initRunTracker(next => {
+      setRoute(next);
+      setIsDrawerOpen(false);
+    });
+  }, []);
 
   const { Screen } = SCREENS[route];
 
