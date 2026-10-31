@@ -211,7 +211,7 @@ export const BotManagerScreen = () => {
                   aria-label="Search bots and folders in this folder"
                   enterKeyHint="search"
                   autoComplete="off"
-                  className="min-h-11 w-full rounded-md border border-line bg-surface pl-10 pr-3 text-[15px] text-ink outline-none placeholder:text-muted focus:border-brand-strong focus:ring-2 focus:ring-brand/30"
+                  className="min-h-11 w-full rounded-md border border-line bg-surface pl-10 pr-3 text-[0.9375rem] text-ink outline-none placeholder:text-muted focus:border-brand-strong focus:ring-2 focus:ring-brand/30"
                 />
               </div>
             )}

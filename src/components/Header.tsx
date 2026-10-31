@@ -17,7 +17,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onBackPress }) => {
 
   return (
     <header className="bg-nav text-white safe-top">
-      <div className="flex items-center gap-2 px-2 py-2">
+      <div className="flex items-center gap-2 px-2 py-2 safe-x land:py-0.5">
         <button
           className="flex size-11 shrink-0 items-center justify-center rounded-md active:bg-white/10"
           onClick={isInSubfolder ? onBackPress : toggleDrawer}
@@ -27,7 +27,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onBackPress }) => {
           {isInSubfolder ? <ArrowLeft size={22} /> : isDrawerOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
         <img src={logo} alt="" className="size-7 shrink-0 rounded bg-white object-contain p-0.5" />
-        <p className="min-w-0 truncate pl-1 text-[15px]">
+        <p className="min-w-0 truncate pl-1 text-[0.9375rem]">
           <span className="text-white/60">{group} / </span>
           <span className="font-semibold">{label}</span>
         </p>

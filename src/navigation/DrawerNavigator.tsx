@@ -77,8 +77,10 @@ export const DrawerNavigator = () => {
         inert={!isDrawerOpen}
         // Positioned by GSAP (xPercent); a Tailwind translate class would stack with it.
         className="fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-nav text-white safe-top"
+        // At most 85% of the screen, so a sliver of the page stays visible with large text.
+        style={{ paddingLeft: 'var(--inset-left)', width: 'min(calc(18rem + var(--inset-left)), 85vw)' }}
       >
-        <div className="flex items-center gap-3 px-5 py-5">
+        <div className="flex items-center gap-3 px-5 py-5 land:py-3">
           <img src={logo} alt="" className="size-9 rounded-md bg-white object-contain p-0.5" />
           <div>
             <p className="font-semibold leading-tight">Bot Manager</p>
@@ -100,7 +102,7 @@ export const DrawerNavigator = () => {
                       <button
                         onClick={() => navigate(name)}
                         aria-current={active ? 'page' : undefined}
-                        className={`relative flex min-h-12 w-full items-center gap-3 px-5 text-left text-[15px] transition-colors ${
+                        className={`relative flex min-h-12 w-full items-center gap-3 px-5 text-left text-[0.9375rem] transition-colors ${
                           active ? 'bg-nav-soft font-semibold text-white' : 'text-white/80 active:bg-white/10'
                         }`}
                       >

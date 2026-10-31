@@ -27,7 +27,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({ path, onNavigate }) => {
                 <>
                   <button
                     onClick={() => onNavigate(item, index)}
-                    className="min-h-11 rounded px-1.5 text-sm text-brand-strong underline-offset-2 active:underline"
+                    className="min-h-11 min-w-11 rounded px-1.5 text-sm text-brand-strong underline-offset-2 active:underline"
                   >
                     {item.name}
                   </button>

@@ -64,20 +64,31 @@ export const Paginator: React.FC<PaginatorProps> = ({
     return pages;
   };
 
-  const navButton = (onClick: () => void, enabled: boolean, icon: React.ReactNode, label: string) => (
+  // When 9 buttons of 44 px don't fit (narrow phone or large system text), first/last and
+  // the two outermost page numbers are hidden so the rest keep a full touch target.
+  // A container query in rem reacts to both the available width and the text size.
+  const narrowHidden = '@max-[26rem]:hidden';
+
+  const navButton = (
+    onClick: () => void,
+    enabled: boolean,
+    icon: React.ReactNode,
+    label: string,
+    className = '',
+  ) => (
     <button
       onClick={onClick}
       disabled={!enabled || loading}
       aria-label={label}
-      className="flex size-11 items-center justify-center rounded-md text-ink active:bg-page disabled:text-line"
+      className={`flex size-11 shrink-0 items-center justify-center rounded-md text-ink active:bg-page disabled:text-line ${className}`}
     >
       {icon}
     </button>
   );
 
   return (
-    <nav aria-label="Pages" className="border-t border-line bg-surface px-3 pt-2 safe-bottom">
-      <div className="flex items-center justify-between gap-2 px-1 text-sm">
+    <nav aria-label="Pages" className="border-t border-line bg-surface px-3 pt-2 safe-bottom land:flex land:items-center land:gap-2 land:py-1">
+      <div className="flex items-center justify-between gap-2 px-1 text-sm land:contents">
         <span className="text-muted">
           {totalPages <= 1
             ? totalItems === 0
@@ -88,15 +99,15 @@ export const Paginator: React.FC<PaginatorProps> = ({
         <button
           onClick={() => setShowDropdown(true)}
           aria-haspopup="dialog"
-          className="flex items-center gap-1 rounded-lg px-2 py-1.5 font-medium text-ink active:bg-page"
+          className="flex min-h-11 items-center gap-1 rounded-lg px-2 font-medium text-ink active:bg-page land:order-2"
         >
           {pageSize} per page <ChevronDown size={14} />
         </button>
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-0.5 pb-2 pt-1">
-          {navButton(() => handlePageChange(0), canGoPrevious, <ChevronsLeft size={18} />, 'First page')}
+        <div className="@container flex items-center justify-center gap-0.5 pb-2 pt-1 land:order-1 land:flex-1 land:py-0">
+          {navButton(() => handlePageChange(0), canGoPrevious, <ChevronsLeft size={18} />, 'First page', narrowHidden)}
           {navButton(() => handlePageChange(currentPage - 1), canGoPrevious, <ChevronLeft size={18} />, 'Previous page')}
           {getVisiblePages().map(page => {
             const current = page === currentPage;
@@ -107,7 +118,7 @@ export const Paginator: React.FC<PaginatorProps> = ({
                 disabled={loading}
                 aria-label={`Page ${page + 1}`}
                 aria-current={current ? 'page' : undefined}
-                className={`flex size-11 items-center justify-center rounded-md text-sm font-semibold ${
+                className={`flex size-11 shrink-0 items-center justify-center rounded-md text-sm font-semibold ${Math.abs(page - currentPage) >= 2 ? narrowHidden : ''} ${
                   current ? 'bg-brand-strong text-white' : 'text-ink active:bg-page'
                 }`}
               >
@@ -116,7 +127,7 @@ export const Paginator: React.FC<PaginatorProps> = ({
             );
           })}
           {navButton(() => handlePageChange(currentPage + 1), canGoNext, <ChevronRight size={18} />, 'Next page')}
-          {navButton(() => handlePageChange(totalPages - 1), canGoNext, <ChevronsRight size={18} />, 'Last page')}
+          {navButton(() => handlePageChange(totalPages - 1), canGoNext, <ChevronsRight size={18} />, 'Last page', narrowHidden)}
         </div>
       )}
 

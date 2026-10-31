@@ -37,10 +37,28 @@
   }
 }
 
+/* Phones held sideways: little height, so screens switch to a compact layout. */
+@custom-variant land (@media (orientation: landscape) and (max-height: 520px));
+
+/* Safe-area insets. Capacitor's SystemBars plugin passes them through to env() on recent
+   WebViews and also injects --safe-area-inset-* (0 when it pads the WebView itself). */
+:root {
+  --inset-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --inset-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+  --inset-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --inset-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+}
+
 html,
 body,
 #root {
   height: 100%;
+}
+
+html {
+  /* Keep our type scale in landscape; Android/iOS would otherwise inflate text. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -67,11 +85,17 @@ button:disabled {
 }
 
 .safe-top {
-  padding-top: env(safe-area-inset-top);
+  padding-top: var(--inset-top);
 }
 
 .safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: var(--inset-bottom);
+}
+
+/* Left/right insets: the camera cutout and the 3-button nav bar sit on a side in landscape. */
+.safe-x {
+  padding-left: var(--inset-left);
+  padding-right: var(--inset-right);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -170,7 +194,14 @@ dialog.dialog-sheet {
 dialog.dialog-center {
   width: calc(100% - 2.5rem);
   max-width: 22rem;
+  /* Small phones in landscape can be shorter than the dialog: cap it and scroll inside. */
+  max-height: calc(100dvh - 1.5rem);
   margin: auto;
+}
+
+dialog.dialog-center > * {
+  max-height: inherit;
+  overflow-y: auto;
 }
 
 dialog.dialog-page {

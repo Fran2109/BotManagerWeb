@@ -57,7 +57,7 @@ const DeviceStatusItem: React.FC<DeviceStatusItemProps> = ({
       <button
         onClick={onPress}
         disabled={!enabled}
-        className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-md border px-1 py-2 text-[13px] font-semibold leading-none transition-colors active:bg-page disabled:border-line disabled:text-muted/50 ${
+        className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-md border px-1 py-2 text-[0.8125rem] font-semibold leading-none transition-colors active:bg-page disabled:border-line disabled:text-muted/50 ${
           tone === 'stop' ? 'border-fail/40 text-fail' : 'border-line text-ink'
         }`}
       >
@@ -68,8 +68,9 @@ const DeviceStatusItem: React.FC<DeviceStatusItemProps> = ({
   };
 
   return (
-    <div data-row className="px-4 py-3.5">
-      <div className="flex items-center gap-3">
+    // Landscape: identity on the left, actions on the right, so a row is one line tall.
+    <div data-row className="px-4 py-3.5 land:flex land:items-center land:gap-4 land:py-2.5">
+      <div className="flex min-w-0 items-center gap-3 land:flex-1">
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-ink">{user.label}</p>
           <p className="truncate text-sm text-muted">{user.email}</p>
@@ -85,13 +86,13 @@ const DeviceStatusItem: React.FC<DeviceStatusItemProps> = ({
         </StatusBadge>
       </div>
 
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex gap-2 land:mt-0 land:w-72 land:shrink-0">
         {actionButton('Screenshot', () => onScreenshot(user), isScreenshotRunning, Camera, 'ink')}
         {actionButton('Reset', () => onResetDevice(user), isResetting, RefreshCw, 'ink')}
         {actionButton('Shut down', () => onShutdown(user), isShutdownRunning, Power, 'stop')}
       </div>
       {!user.checkingDevice && !user.deviceConnected && (
-        <p className="mt-2 text-sm text-muted">Actions are available when the device is connected.</p>
+        <p className="mt-2 text-sm text-muted land:sr-only">Actions are available when the device is connected.</p>
       )}
     </div>
   );

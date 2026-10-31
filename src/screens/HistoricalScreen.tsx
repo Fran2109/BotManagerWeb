@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ArrowLeft, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { AVAILABLE_USERS } from '../constants/users';
 import { useExecutionHistory } from '../hooks/useExecutionHistory';
 import { useBackHandler } from '../navigation/backHandler';
@@ -119,10 +119,9 @@ export const HistoricalScreen = () => {
     <ScreenWrapper>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl">
-          <button onClick={clearSelection} className={`${buttonStyles.ghost} ml-2 mt-2`}>
-            <ArrowLeft size={18} /> All accounts
-          </button>
           <ScreenTitle
+            onBack={clearSelection}
+            backLabel="Back to all accounts"
             title={selectedUser.label}
             subtitle={selectedUser.email}
             action={<RefreshButton onClick={refresh} busy={loading} busyLabel="Loading" />}

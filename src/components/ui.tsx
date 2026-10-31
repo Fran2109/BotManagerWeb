@@ -208,19 +208,23 @@ export const Switch: React.FC<SwitchProps> = ({ value, onValueChange, disabled, 
       className="shrink-0"
     />
   );
-  if (!children) return input;
+  // Without a visible label, a padded <label> wrapper gives the small control a 44 px tap area.
+  if (!children) {
+    return <label className="-m-2.5 inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center">{input}</label>;
+  }
   return (
-    <div className="flex items-center justify-between gap-4">
-      <label htmlFor={id} className="min-w-0">
+    // The whole row is the label, so tapping anywhere on it toggles the switch.
+    <label className="flex min-h-11 cursor-pointer items-center justify-between gap-4">
+      <span className="min-w-0">
         <span className="block font-medium text-ink">{children}</span>
         {hint ? (
           <span id={`${id}-hint`} className="block text-sm text-muted">
             {hint}
           </span>
         ) : null}
-      </label>
+      </span>
       {input}
-    </div>
+    </label>
   );
 };
 
@@ -279,7 +283,7 @@ export const StatusBadge: React.FC<{ tone: StatusTone; icon?: React.ReactNode; c
   children,
 }) => (
   <span
-    className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[13px] font-medium ${TONE_CLASSES[tone]}`}
+    className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[0.8125rem] font-medium ${TONE_CLASSES[tone]}`}
   >
     {icon}
     {children}

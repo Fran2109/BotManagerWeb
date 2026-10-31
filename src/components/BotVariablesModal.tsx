@@ -481,7 +481,7 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
 
   return (
     <Modal visible={visible} onRequestClose={onClose} variant="page" labelledBy="variables-title">
-      <div className="flex h-full flex-col bg-page safe-top safe-bottom">
+      <div className="flex h-full flex-col bg-page safe-top safe-bottom safe-x">
         <div className="bg-nav text-white">
           <div className="flex items-center gap-1 px-2 py-2">
             <button
@@ -492,7 +492,7 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
               <X size={22} />
             </button>
             <div className="min-w-0 flex-1">
-              <h2 id="variables-title" className="text-[15px] font-semibold leading-tight">
+              <h2 id="variables-title" className="text-[0.9375rem] font-semibold leading-tight">
                 Bot inputs
               </h2>
               {bot && <p className="truncate text-sm text-white/60">{bot.name}</p>}

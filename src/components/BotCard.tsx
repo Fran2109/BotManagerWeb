@@ -28,7 +28,7 @@ export const BotCard: React.FC<BotCardProps> = ({ bot, isExecuting, isDisabled, 
         className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left active:bg-page"
       >
         <Folder size={20} className="shrink-0 text-warn" fill="#f9d58b" strokeWidth={1.75} />
-        <span className="min-w-0 flex-1 break-words text-[15px] text-ink">{bot.name}</span>
+        <span className="min-w-0 flex-1 break-words text-[0.9375rem] text-ink">{bot.name}</span>
         <ChevronRight size={18} className="shrink-0 text-muted" />
       </button>
     );
@@ -43,7 +43,7 @@ export const BotCard: React.FC<BotCardProps> = ({ bot, isExecuting, isDisabled, 
       className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left active:bg-page disabled:opacity-60"
     >
       <BotIcon size={20} className="shrink-0 text-brand-strong" strokeWidth={1.75} />
-      <span className="min-w-0 flex-1 break-words text-[15px] text-ink">{bot.name}</span>
+      <span className="min-w-0 flex-1 break-words text-[0.9375rem] text-ink">{bot.name}</span>
       {isBot && (
         <span
           aria-hidden

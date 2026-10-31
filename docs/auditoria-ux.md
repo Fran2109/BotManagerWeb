@@ -75,6 +75,43 @@ Los 17 hallazgos, con la estética del Control Room:
   - Verificado contra Francisco 1: 228 ejecuciones = 131 Completed + 50 Run aborted + 47 Failed.
 - Al probarlo apareció un estado que no estaba contemplado, `DEPLOY_FAILED` (8 ejecuciones), que se mostraba sin traducir. Ahora se muestra como "Deploy failed" y entra en el filtro Failed.
 
+## Tercera pasada: tamaños de teléfono y orientación
+
+Se recorrieron automáticamente todas las pantallas y los diálogos que se pueden abrir sin lanzar un bot. Las mediciones fueron: desborde horizontal, elementos fuera de pantalla, texto recortado y objetivos táctiles de menos de 44 px.
+
+| Tamaño | Orientación | Resultado final |
+|---|---|---|
+| 320×568 (teléfono chico) | Vertical | OK |
+| 360×640 (Android más común) | Vertical y horizontal | OK |
+| 412×915 (teléfono grande) | Vertical | OK |
+| 568×320 | Horizontal | OK |
+| 915×412 | Horizontal | OK |
+| 360×640 con texto al 130 % | Vertical y horizontal | OK |
+
+### Problemas encontrados y corregidos
+
+| Problema | Dónde | Corrección |
+|---|---|---|
+| En horizontal la barra, el título y los contadores ocupaban casi toda la altura: en Devices se veía medio equipo. | Todas las pantallas, a menos de 520 px de alto | Variante `land:` con barra más baja (62 → 50 px), título y subtítulo en una línea, contadores en una línea y acciones del equipo a la derecha del nombre. Ahora se ven dos equipos y medio. |
+| El paginador ocupaba ~120 px y no se veía ninguna ejecución. | Historical, horizontal | Paginador en una sola fila (49 px). La lista arranca en 199 px. |
+| Los chips de filtro se superponían. | Historical, horizontal | Los dos grupos van en una sola fila que se desplaza. |
+| "Runs per page" medía 340 px en una pantalla de 320 y no se podía desplazar. | Diálogos centrados | Altura máxima y desplazamiento interno. |
+| Los 9 botones del paginador no entraban y quedaban de 31 px; con texto grande desbordaban y el navegador achicaba toda la página. | 320 px y texto al 130 % | Container query en `rem`: si no entran, se ocultan primera/última y los números de los extremos. |
+| El menú lateral medía 374 px con texto grande en una pantalla de 360. | Texto al 130 % | Ancho máximo del 85 % de la pantalla. |
+| Solo se respetaban las áreas seguras de arriba y abajo. En horizontal, el notch o la barra de navegación lateral podían tapar contenido. | Horizontal | Padding con `safe-area-inset-left/right` en la barra, las pantallas, el menú y los diálogos de pantalla completa. Se toma el valor de `env()` y de las variables que inyecta Capacitor. |
+| Objetivos táctiles chicos: chips de 36 px, botón "per page" de 32 px, switch de 32×16, raíz del breadcrumb de 41 px. | Varias | Todos llevados a 44 px. La fila de un switch con etiqueta se puede tocar entera. |
+| Tamaños de texto en `px`, que no escalan con el tamaño de fuente del sistema. | Varias | Pasados a `rem`. Se agregó `text-size-adjust: 100%` para que Android no infle el texto en horizontal. |
+
+### Ya estaba bien
+
+- La orientación no está bloqueada. `configChanges` evita que la pantalla se reinicie al girar, así que no se pierde el estado.
+- Con edge-to-edge (Android 15), el plugin `SystemBars` de Capacitor 8 pasa las áreas seguras al WebView y agrega padding cuando se abre el teclado, así que este no tapa los campos.
+
+### Sin probar
+
+- La pantalla "Bot inputs": solo se abre después de elegir una cuenta y eso puede lanzar un bot. Su diseño usa los mismos componentes medidos arriba.
+- Un teléfono físico: todo se midió con la emulación del navegador.
+
 ## Queda para después
 
 - **Pausar o detener ejecuciones desde In progress.** El Control Room lo permite, pero es una acción nueva sobre la API, no una mejora de UI.

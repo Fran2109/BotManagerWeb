@@ -38,7 +38,7 @@ interface ChipGroupProps<K extends string> {
 }
 
 const ChipGroup = <K extends string>({ label, options, value, onChange, disabled }: ChipGroupProps<K>) => (
-  <div role="radiogroup" aria-label={label} className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
+  <div role="radiogroup" aria-label={label} className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 land:mx-0 land:shrink-0 land:overflow-visible land:px-0">
     {options.map(option => {
       const selected = option.key === value;
       return (
@@ -48,7 +48,7 @@ const ChipGroup = <K extends string>({ label, options, value, onChange, disabled
           aria-checked={selected}
           disabled={disabled}
           onClick={() => onChange(option.key)}
-          className={`min-h-9 shrink-0 rounded-full border px-3.5 text-sm font-medium transition-colors disabled:opacity-60 ${
+          className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors disabled:opacity-60 ${
             selected
               ? 'border-brand-strong bg-brand-tint text-brand-strong'
               : 'border-line bg-surface text-ink-soft active:bg-page'
@@ -69,7 +69,7 @@ interface HistoryFiltersProps {
 }
 
 export const HistoryFilters: React.FC<HistoryFiltersProps> = ({ status, period, onChange, disabled }) => (
-  <div className="space-y-2 px-4 pb-3">
+  <div className="no-scrollbar space-y-2 px-4 pb-3 land:flex land:gap-4 land:space-y-0 land:overflow-x-auto land:pb-2">
     <ChipGroup label="Status" options={STATUS_OPTIONS} value={status} onChange={s => onChange(s, period)} disabled={disabled} />
     <ChipGroup label="Started" options={PERIOD_OPTIONS} value={period} onChange={p => onChange(status, p)} disabled={disabled} />
   </div>
