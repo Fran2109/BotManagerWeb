@@ -57,6 +57,7 @@ public class RunTrackerService extends Service {
     private static final String TAG = "RunTracker";
 
     static final String ACTION_TRACK = "com.botmanager.web.TRACK_RUN";
+    static final String ACTION_RUN_SCHEDULE = "com.botmanager.web.RUN_SCHEDULE";
     static final String EXTRA_ROUTE = "botmanager.route";
 
     static final String PROGRESS_CHANNEL = "bot-progress";
@@ -71,6 +72,8 @@ public class RunTrackerService extends Service {
     private static final long MAX_TRACK_MS = 24 * 3600_000L;
     private static final int MAX_AUTH_ERRORS = 3;
     private static final int MAX_ERRORS = 6;
+    /** A scheduled launch retries this many times, a minute apart, when there's no connection. */
+    private static final int SCHEDULE_NETWORK_RETRIES = 10;
 
     private static final String PREFS = "run-tracker";
     private static final String PREFS_RUNS = "runs";
@@ -116,6 +119,8 @@ public class RunTrackerService extends Service {
     private PowerManager.WakeLock wakeLock;
     private ConnectivityManager.NetworkCallback networkCallback;
     private boolean foreground;
+    /** Scheduled launches still in progress (keep the service alive until they finish). */
+    private int pendingSchedules;
 
     /** Starts the service (if needed) and adds a run to follow. */
     static void track(Context context, Run run) {
@@ -174,7 +179,11 @@ public class RunTrackerService extends Service {
                     schedule(run, 3000);
                 }
             }
-            if (runs.isEmpty()) stopTracking();
+            if (intent != null && ACTION_RUN_SCHEDULE.equals(intent.getAction())) {
+                pendingSchedules++;
+                runSchedule(intent.getStringExtra("scheduleId"), intent.getLongExtra("scheduledAt", System.currentTimeMillis()), 0);
+            }
+            if (runs.isEmpty() && pendingSchedules == 0) stopTracking();
             else wakeLock.acquire(MAX_TRACK_MS);
         });
         return START_STICKY;
@@ -316,7 +325,7 @@ public class RunTrackerService extends Service {
             .setContentIntent(openApp("Historical", notificationId(run.deploymentId, "d")))
             .build();
         notifySafe(notificationId(run.deploymentId, "done"), done);
-        if (runs.isEmpty()) stopTracking();
+        if (runs.isEmpty() && pendingSchedules == 0) stopTracking();
         else refreshForeground();
     }
 
@@ -523,6 +532,129 @@ public class RunTrackerService extends Service {
             return;
         }
         schedule(run, nextDelay);
+    }
+
+    // ----- Scheduled launches (see ScheduleManager) -----
+
+    /** Posts a scheduling problem (missed run, offline PC…) that opens the Scheduled screen. */
+    static void notifyScheduleProblem(Context context, JSONObject s, String title, String body) {
+        createChannels(context);
+        Intent open = new Intent(context, MainActivity.class)
+            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(EXTRA_ROUTE, "Scheduled");
+        PendingIntent pi = PendingIntent.getActivity(context, (s.optString("id") + "open").hashCode(), open,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Notification n = new NotificationCompat.Builder(context, FINISHED_CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat_bot)
+            .setColor(Color.parseColor("#C4460F"))
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pi)
+            .build();
+        try {
+            NotificationManagerCompat.from(context).notify((s.optString("id") + "problem").hashCode(), n);
+        } catch (SecurityException e) {
+            Log.w(TAG, "Notification permission missing", e);
+        }
+    }
+
+    private void scheduleDone() {
+        pendingSchedules = Math.max(0, pendingSchedules - 1);
+        if (runs.isEmpty() && pendingSchedules == 0) stopTracking();
+    }
+
+    /** Launches a scheduled bot like the app does: device connected check, then deploy. */
+    private void runSchedule(String id, long scheduledAt, int attempt) {
+        JSONObject s = id != null ? ScheduleManager.find(this, id) : null;
+        if (s == null) {
+            scheduleDone();
+            return;
+        }
+        String bot = s.optString("botName");
+        String account = s.optString("accountLabel", s.optString("userEmail"));
+        if (attempt == 0 && System.currentTimeMillis() - scheduledAt > ScheduleManager.MISSED_AFTER_MS) {
+            notifyScheduleProblem(this, s, "Missed: " + bot,
+                "It was due at " + s.optString("time") + " but Android woke the app too late, so it wasn't launched.");
+            ScheduleManager.recordResult(this, id, "Missed (too late)");
+            scheduleDone();
+            return;
+        }
+
+        Run tmp = new Run();
+        tmp.userEmail = s.optString("userEmail");
+        tmp.password = s.optString("password");
+        tmp.baseUrl = s.optString("baseUrl");
+        try {
+            String token = login(tmp);
+            JSONObject devices = post(tmp.baseUrl + "v2/devices/list", new JSONObject().put("filter", new JSONObject()), token);
+            JSONArray list = devices.optJSONArray("list");
+            String status = list != null && list.length() > 0 ? list.getJSONObject(0).optString("status") : "NO_DEVICE";
+            if (!"CONNECTED".equals(status)) {
+                notifyScheduleProblem(this, s, "Couldn't run " + bot,
+                    "The PC for " + account + " was offline at " + s.optString("time") + ". Check it in Devices.");
+                ScheduleManager.recordResult(this, id, "PC offline");
+                scheduleDone();
+                return;
+            }
+
+            JSONObject botInput = s.optJSONObject("botInput");
+            JSONObject deploy = new JSONObject()
+                .put("fileId", s.getString("fileId"))
+                .put("runAsUserIds", new JSONArray().put(s.getString("userId")))
+                .put("poolIds", new JSONArray())
+                .put("overrideDefaultDevice", false)
+                .put("callbackInfo", new JSONObject()
+                    .put("url", s.optString("callbackUrl"))
+                    .put("headers", new JSONObject().put("X-Authorization", token)))
+                .put("botInput", botInput != null ? botInput : new JSONObject())
+                .put("hideBotAgentUi", s.optBoolean("hideBotAgentUi"));
+            JSONObject res = post(tmp.baseUrl + "v3/automations/deploy", deploy, token);
+            String deploymentId = res.getString("deploymentId");
+            ScheduleManager.recordResult(this, id, "Launched");
+
+            if (s.optBoolean("notify")) {
+                // Follow it like a manual launch: progress, then the result.
+                Run run = new Run();
+                run.deploymentId = deploymentId;
+                run.botName = bot;
+                run.userEmail = tmp.userEmail;
+                run.password = tmp.password;
+                run.baseUrl = tmp.baseUrl;
+                run.token = token;
+                run.startedAt = System.currentTimeMillis();
+                runs.put(deploymentId, run);
+                saveRuns();
+                showProgress(run, "Started by its schedule…", -1);
+                schedule(run, 3000);
+            }
+            scheduleDone();
+        } catch (HttpError e) {
+            String why = e.status == 401 || e.status == 403
+                ? "The Control Room rejected the credentials of " + account + "."
+                : e.status == 404
+                    ? "The bot no longer exists in " + account + "'s Control Room. Create the schedule again."
+                    : "The Control Room returned an error (" + e.status + ").";
+            notifyScheduleProblem(this, s, "Couldn't run " + bot, why);
+            ScheduleManager.recordResult(this, id, "Error " + e.status);
+            scheduleDone();
+        } catch (IOException e) {
+            if (attempt < SCHEDULE_NETWORK_RETRIES) {
+                executor.schedule(() -> runSchedule(id, scheduledAt, attempt + 1), 60, TimeUnit.SECONDS);
+                return;
+            }
+            notifyScheduleProblem(this, s, "Couldn't run " + bot,
+                "There was no internet connection for 10 minutes after " + s.optString("time") + ".");
+            ScheduleManager.recordResult(this, id, "No connection");
+            scheduleDone();
+        } catch (Exception e) {
+            Log.w(TAG, "Scheduled launch failed", e);
+            notifyScheduleProblem(this, s, "Couldn't run " + bot, "Unexpected error: " + e.getMessage());
+            ScheduleManager.recordResult(this, id, "Error");
+            scheduleDone();
+        }
     }
 
     // ----- Persistence -----

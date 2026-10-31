@@ -2,13 +2,14 @@ import { createContext, useContext } from 'react';
 
 // Kept apart from DrawerNavigator so Header and screens can use it without an import
 // cycle (DrawerNavigator -> screens -> Header -> DrawerNavigator).
-export type RouteName = 'Bots' | 'InProgress' | 'Historical' | 'Statistics' | 'Devices';
+export type RouteName = 'Bots' | 'InProgress' | 'Historical' | 'Scheduled' | 'Statistics' | 'Devices';
 
 /** Sections and labels mirror the Automation Anywhere Control Room navigation. */
 export const ROUTE_META: Record<RouteName, { group: string; label: string }> = {
   Bots: { group: 'Automation', label: 'Bots' },
   InProgress: { group: 'Activity', label: 'In progress' },
   Historical: { group: 'Activity', label: 'Historical' },
+  Scheduled: { group: 'Activity', label: 'Scheduled' },
   Statistics: { group: 'Activity', label: 'Statistics' },
   Devices: { group: 'Manage', label: 'Devices' },
 };

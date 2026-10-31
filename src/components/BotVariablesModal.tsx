@@ -27,6 +27,8 @@ interface BotVariablesModalProps {
   onConfirm: (botInputs: BotInput) => void;
   /** Values from a previous launch ("Run again"): override the bot's defaults when the type matches. */
   initialInputs?: BotInput;
+  /** Main button text ("Save schedule" when the inputs are for a schedule). */
+  confirmLabel?: string;
 }
 
 const inputClass =
@@ -114,6 +116,7 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
   onClose,
   onConfirm,
   initialInputs,
+  confirmLabel = 'Run bot now',
 }) => {
   const [variables, setVariables] = useState<BotVariable[]>([]);
   const [loading, setLoading] = useState(false);
@@ -537,7 +540,7 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
             className={`${buttonStyles.primary} w-full`}
           >
             <Play size={16} fill="currentColor" />
-            Run bot now
+            {confirmLabel}
           </button>
         </div>
       </div>

@@ -1,6 +1,11 @@
 package com.botmanager.web;
 
 import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
+
+import com.getcapacitor.JSArray;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -8,9 +13,14 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import org.json.JSONObject;
+
+import java.util.UUID;
+
 /**
- * Bridge between lib/runTracker.ts and RunTrackerService. Also reports which screen a
- * tapped notification should open ("openRoute" event, or getLaunchRoute() on cold start).
+ * Bridge between lib/runTracker.ts / lib/schedules.ts and the native side: run tracking
+ * (RunTrackerService), phone-side bot schedules (ScheduleManager), and which screen a tapped
+ * notification should open ("openRoute" event, or getLaunchRoute() on cold start).
  */
 @CapacitorPlugin(name = "RunTracker")
 public class RunTrackerPlugin extends Plugin {
@@ -23,6 +33,86 @@ public class RunTrackerPlugin extends Plugin {
             RunTrackerService.resumeIfNeeded(getContext());
         } catch (Exception ignored) {
             // Starting from the background isn't allowed; the next launch retries.
+        }
+        // Alarms are lost on force-stop; opening the app sets them again.
+        ScheduleManager.armAll(getContext());
+    }
+
+    // ----- Schedules -----
+
+    /** Creates or replaces a schedule and sets its alarm. Returns it with id and nextAt. */
+    @PluginMethod
+    public void saveSchedule(PluginCall call) {
+        try {
+            JSONObject s = new JSONObject(call.getObject("schedule").toString());
+            if (s.optString("id").isEmpty()) s.put("id", UUID.randomUUID().toString());
+            if (!s.has("active")) s.put("active", true);
+            JSONObject saved = ScheduleManager.arm(getContext(), s);
+            call.resolve(publicView(saved));
+        } catch (Exception e) {
+            call.reject("Could not save the schedule: " + e.getMessage(), e);
+        }
+    }
+
+    @PluginMethod
+    public void listSchedules(PluginCall call) {
+        JSArray arr = new JSArray();
+        for (JSONObject s : ScheduleManager.load(getContext())) arr.put(publicView(s));
+        JSObject ret = new JSObject();
+        ret.put("schedules", arr);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void setScheduleActive(PluginCall call) {
+        String id = call.getString("id");
+        JSONObject s = id != null ? ScheduleManager.find(getContext(), id) : null;
+        if (s == null) {
+            call.reject("Schedule not found");
+            return;
+        }
+        try {
+            s.put("active", Boolean.TRUE.equals(call.getBoolean("active")));
+            call.resolve(publicView(ScheduleManager.arm(getContext(), s)));
+        } catch (Exception e) {
+            call.reject(e.getMessage(), e);
+        }
+    }
+
+    @PluginMethod
+    public void deleteSchedule(PluginCall call) {
+        String id = call.getString("id");
+        if (id != null) ScheduleManager.remove(getContext(), id);
+        call.resolve();
+    }
+
+    /** Whether alarms will fire on time ("Alarms & reminders" permission, Android 12+). */
+    @PluginMethod
+    public void exactAlarmStatus(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("exact", ScheduleManager.canScheduleExact(getContext()));
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void openExactAlarmSettings(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            Intent intent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                .setData(Uri.parse("package:" + getContext().getPackageName()))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+        }
+        call.resolve();
+    }
+
+    /** The schedule as JS sees it: never sends the stored password back to the WebView. */
+    private static JSObject publicView(JSONObject s) {
+        try {
+            JSObject o = JSObject.fromJSONObject(s);
+            o.remove("password");
+            return o;
+        } catch (Exception e) {
+            return new JSObject();
         }
     }
 

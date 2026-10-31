@@ -16,3 +16,4 @@ export { BotExecutionErrorModal } from './BotExecutionErrorModal';
 export { BotVariablesModal } from './BotVariablesModal';
 export { BotNotFoundModal } from './BotNotFoundModal';
 export { RepeatLaunchModal } from './RepeatLaunchModal';
+export { ScheduleModal } from './ScheduleModal';

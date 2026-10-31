@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronRight, Star } from 'lucide-react';
+import { CalendarClock, ChevronRight, Star } from 'lucide-react';
 import { Bot, User } from '../types';
 import { useDeviceStatus } from '../hooks/useDeviceStatus';
 import { Lamp, Modal, Sheet, Switch, buttonStyles } from './ui';
@@ -25,6 +25,8 @@ interface UserSelectionModalProps {
   onClose: () => void;
   /** Preloads the switches (e.g. "Change options" on a recent launch). */
   initialOptions?: { hideBotAgentUi: boolean; notifyProgress: boolean } | null;
+  /** Shown as "Schedule for later" when scheduling is available (Android). */
+  onSchedule?: () => void;
 }
 
 export const UserSelectionModal: React.FC<UserSelectionModalProps> = ({
@@ -35,6 +37,7 @@ export const UserSelectionModal: React.FC<UserSelectionModalProps> = ({
   onUserSelect,
   onClose,
   initialOptions = null,
+  onSchedule,
 }) => {
   const { usersWithDeviceStatus, checkDevicesStatus } = useDeviceStatus();
   const [hideBotAgentUi, setHideBotAgentUi] = useState(false);
@@ -166,10 +169,16 @@ export const UserSelectionModal: React.FC<UserSelectionModalProps> = ({
           )}
         </ul>
 
-        <div className="p-5">
-          <button onClick={onClose} disabled={loading} className={`${buttonStyles.secondary} w-full`}>
+        <div className="flex gap-3 p-5">
+          <button onClick={onClose} disabled={loading} className={`${buttonStyles.secondary} flex-1`}>
             Cancel
           </button>
+          {onSchedule && (
+            <button onClick={onSchedule} disabled={loading} className={`${buttonStyles.secondary} flex-1`}>
+              <CalendarClock size={16} />
+              Schedule
+            </button>
+          )}
         </div>
       </Sheet>
     </Modal>

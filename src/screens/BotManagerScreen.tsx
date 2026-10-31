@@ -17,13 +17,17 @@ import {
   BotVariablesModal,
   BotNotFoundModal,
   RepeatLaunchModal,
+  ScheduleModal,
+  SuccessModal,
 } from '../components';
+import type { ScheduleFormValues } from '../components/ScheduleModal';
 import { ErrorState, Panel, SkeletonRows, buttonStyles, useListEntrance } from '../components/ui';
 import { describeError } from '../lib/errors';
 import { trackRun } from '../lib/runTracker';
 import { RecentLaunch, isFavorite, recordLaunch, useFavorites, useRecents } from '../lib/launchHistory';
 import { useRunStats } from '../hooks/useRunStats';
 import { formatRelative } from '../lib/runStatus';
+import { createSchedule, describeNextRun, describeRecurrence, schedulesSupported } from '../lib/schedules';
 
 const DEVICE_NOT_CONNECTED_MESSAGE =
   "The PC for this account is offline, so the bot can't start. Check it in Devices.";
@@ -45,6 +49,13 @@ export const BotManagerScreen = () => {
   const [repeatLaunch, setRepeatLaunch] = useState<RecentLaunch | null>(null);
   const [sheetOptions, setSheetOptions] = useState<{ hideBotAgentUi: boolean; notifyProgress: boolean } | null>(null);
   const [prefillInputs, setPrefillInputs] = useState<BotInput | undefined>(undefined);
+
+  // Scheduling from the phone: the form, then Bot inputs if the bot takes any.
+  const [scheduleVisible, setScheduleVisible] = useState(false);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [pendingSchedule, setPendingSchedule] = useState<ScheduleFormValues | null>(null);
+  const [scheduledMessage, setScheduledMessage] = useState<string | null>(null);
 
   // Last result of each bot (any account, last 30 days) for the list; shared with Statistics.
   const { stats } = useRunStats(30);
@@ -181,8 +192,61 @@ export const BotManagerScreen = () => {
     }
   };
 
+  const saveSchedule = async (values: ScheduleFormValues, botInput?: BotInput) => {
+    const bot = launchBotRef.current;
+    if (!bot) return;
+    const created = await createSchedule({ bot, ...values, botInput });
+    const next = describeNextRun(created.nextAt);
+    setScheduledMessage(
+      `${bot.name} on ${created.accountLabel}: ${describeRecurrence(created)}.${next ? ` Next run: ${next}.` : ''} See it in Activity, under Scheduled.`,
+    );
+  };
+
+  const handleScheduleForm = async (values: ScheduleFormValues) => {
+    const bot = launchBotRef.current;
+    if (!bot) return;
+    setScheduleSaving(true);
+    setScheduleError(null);
+    try {
+      // Same checks as a launch: the bot must exist in that account; ask for its inputs now.
+      const found = await checkBotExists(bot.taskName, values.userEmail);
+      if (!found.exists || !found.taskId) {
+        const account = AVAILABLE_USERS.find(u => u.email === values.userEmail)?.label ?? values.userEmail;
+        setScheduleError(`"${bot.name}" isn't in ${account}'s Control Room. Pick another account.`);
+        return;
+      }
+      const token = await getToken(values.userEmail, DEFAULT_PASSWORD);
+      const content = await getBotContent(found.taskId, token, values.userEmail);
+      const hasInputs = content.variables.some(v => v.input && v.type?.toUpperCase() !== 'WINDOW');
+      if (hasInputs) {
+        setPendingSchedule(values);
+        setScheduleVisible(false);
+        setSelectedBot({ ...bot, id: found.taskId });
+        setSelectedUserEmail(values.userEmail);
+        setVariablesModalVisible(true);
+      } else {
+        await saveSchedule(values);
+        setScheduleVisible(false);
+      }
+    } catch (err) {
+      setScheduleError(describeError(err));
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
   const handleVariablesConfirm = (botInputs: BotInput) => {
     setVariablesModalVisible(false);
+
+    if (pendingSchedule) {
+      const values = pendingSchedule;
+      setPendingSchedule(null);
+      saveSchedule(values, botInputs).catch(err => {
+        setScheduleError(describeError(err));
+        setScheduleVisible(true);
+      });
+      return;
+    }
 
     if (!selectedBot || !selectedUserEmail) return;
 
@@ -358,6 +422,32 @@ export const BotManagerScreen = () => {
         }
         onClose={() => setModalVisible(false)}
         initialOptions={sheetOptions}
+        onSchedule={
+          schedulesSupported()
+            ? () => {
+                launchBotRef.current = selectedBot;
+                setModalVisible(false);
+                setScheduleError(null);
+                setScheduleVisible(true);
+              }
+            : undefined
+        }
+      />
+
+      <ScheduleModal
+        visible={scheduleVisible}
+        bot={launchBotRef.current}
+        saving={scheduleSaving}
+        error={scheduleError}
+        onSave={handleScheduleForm}
+        onClose={() => setScheduleVisible(false)}
+      />
+
+      <SuccessModal
+        visible={!!scheduledMessage}
+        title="Scheduled"
+        message={scheduledMessage ?? ''}
+        onConfirm={() => setScheduledMessage(null)}
       />
 
       <LoadingModal
@@ -373,9 +463,11 @@ export const BotManagerScreen = () => {
           setVariablesModalVisible(false);
           setSelectedBot(null);
           setSelectedUserEmail('');
+          setPendingSchedule(null);
         }}
         onConfirm={handleVariablesConfirm}
         initialInputs={prefillInputs}
+        confirmLabel={pendingSchedule ? 'Save schedule' : undefined}
       />
 
       <RepeatLaunchModal

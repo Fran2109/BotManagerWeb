@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
+import { BotManagerNative } from './nativePlugin';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { getControlRoomUrl, getDeployStatus, getToken } from '../Functions';
 import { DEFAULT_PASSWORD } from '../constants/users';
@@ -26,20 +27,7 @@ import type { RouteName } from '../navigation/drawerContext';
  * used on the web.
  */
 
-interface RunTrackerNative {
-  track(options: {
-    deploymentId: string;
-    botName: string;
-    userEmail: string;
-    password: string;
-    baseUrl: string;
-    token: string;
-  }): Promise<void>;
-  getLaunchRoute(): Promise<{ route: string | null }>;
-  addListener(event: 'openRoute', handler: (data: { route: string }) => void): Promise<{ remove: () => void }>;
-}
-
-const RunTrackerNative = registerPlugin<RunTrackerNative>('RunTracker');
+const RunTrackerNative = BotManagerNative;
 
 interface TrackedRun {
   deploymentId: string;
