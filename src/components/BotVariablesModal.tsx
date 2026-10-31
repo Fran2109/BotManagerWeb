@@ -25,6 +25,8 @@ interface BotVariablesModalProps {
   userEmail: string;
   onClose: () => void;
   onConfirm: (botInputs: BotInput) => void;
+  /** Values from a previous launch ("Run again"): override the bot's defaults when the type matches. */
+  initialInputs?: BotInput;
 }
 
 const inputClass =
@@ -111,6 +113,7 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
   userEmail,
   onClose,
   onConfirm,
+  initialInputs,
 }) => {
   const [variables, setVariables] = useState<BotVariable[]>([]);
   const [loading, setLoading] = useState(false);
@@ -189,6 +192,14 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
         }
       });
 
+      // Reuse the inputs of the last launch where the variable still exists with the same type.
+      if (initialInputs) {
+        for (const [name, value] of Object.entries(initialInputs)) {
+          if (initialValues[name] && initialValues[name].type?.toUpperCase() === value.type?.toUpperCase()) {
+            initialValues[name] = value;
+          }
+        }
+      }
       setInputValues(initialValues);
     } catch (error: any) {
       console.error('Error loading bot variables:', error);

@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Search } from 'lucide-react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { History, Search } from 'lucide-react';
 import { Bot, BotInput } from '../types';
 import { AVAILABLE_USERS, DEFAULT_PASSWORD } from '../constants/users';
 import { useBotExecution } from '../hooks/useBotExecution';
@@ -16,10 +16,14 @@ import {
   BotExecutionErrorModal,
   BotVariablesModal,
   BotNotFoundModal,
+  RepeatLaunchModal,
 } from '../components';
 import { ErrorState, Panel, SkeletonRows, buttonStyles, useListEntrance } from '../components/ui';
 import { describeError } from '../lib/errors';
 import { trackRun } from '../lib/runTracker';
+import { RecentLaunch, isFavorite, recordLaunch, useFavorites, useRecents } from '../lib/launchHistory';
+import { useRunStats } from '../hooks/useRunStats';
+import { formatRelative } from '../lib/runStatus';
 
 const DEVICE_NOT_CONNECTED_MESSAGE =
   "The PC for this account is offline, so the bot can't start. Check it in Devices.";
@@ -33,6 +37,18 @@ export const BotManagerScreen = () => {
   const [preExecutionMessage, setPreExecutionMessage] = useState('');
   const launchHideBotAgentUiRef = useRef(false);
   const launchNotifyRef = useRef(false);
+  // The bot as listed (its id can be swapped for the target account's file id later).
+  const launchBotRef = useRef<Bot | null>(null);
+
+  const favorites = useFavorites();
+  const recents = useRecents();
+  const [repeatLaunch, setRepeatLaunch] = useState<RecentLaunch | null>(null);
+  const [sheetOptions, setSheetOptions] = useState<{ hideBotAgentUi: boolean; notifyProgress: boolean } | null>(null);
+  const [prefillInputs, setPrefillInputs] = useState<BotInput | undefined>(undefined);
+
+  // Last result of each bot (any account, last 30 days) for the list; shared with Statistics.
+  const { stats } = useRunStats(30);
+  const lastRunByName = useMemo(() => new Map(stats?.bots.map(b => [b.name, b.last]) ?? []), [stats]);
 
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
@@ -85,6 +101,13 @@ export const BotManagerScreen = () => {
         if (launchNotifyRef.current) {
           void trackRun(deploymentId, userEmail, botName);
         }
+        recordLaunch({
+          bot: launchBotRef.current ?? bot,
+          userEmail,
+          hideBotAgentUi: options.hideBotAgentUi,
+          notifyProgress: launchNotifyRef.current,
+          botInputs: options.botInputs,
+        });
         setExecutionResult({ botName, deploymentId, notifying: launchNotifyRef.current });
         setSuccessModalVisible(true);
       },
@@ -104,6 +127,7 @@ export const BotManagerScreen = () => {
   const handleUserSelection = async (bot: Bot, userEmail: string, hideBotAgentUi: boolean, notifyProgress: boolean) => {
     launchHideBotAgentUiRef.current = hideBotAgentUi;
     launchNotifyRef.current = notifyProgress;
+    launchBotRef.current = bot;
     setModalVisible(false);
     setSelectedBot(bot);
     setSelectedUserEmail(userEmail);
@@ -185,6 +209,72 @@ export const BotManagerScreen = () => {
     ? `${plural(visibleBots.length, 'result')} for "${query.trim()}"`
     : [folderCount && plural(folderCount, 'folder'), botCount && plural(botCount, 'bot')].filter(Boolean).join(', ');
 
+  const openRunSheet = (bot: Bot) => {
+    setSheetOptions(null);
+    setPrefillInputs(undefined);
+    setSelectedBot(bot);
+    setModalVisible(true);
+  };
+
+  const runAgain = (launch: RecentLaunch) => {
+    setRepeatLaunch(null);
+    setPrefillInputs(launch.botInputs);
+    void handleUserSelection(launch.bot, launch.userEmail, launch.hideBotAgentUi, launch.notifyProgress);
+  };
+
+  const changeOptions = (launch: RecentLaunch) => {
+    setRepeatLaunch(null);
+    setPrefillInputs(launch.botInputs);
+    setSheetOptions({ hideBotAgentUi: launch.hideBotAgentUi, notifyProgress: launch.notifyProgress });
+    setSelectedBot(launch.bot);
+    setModalVisible(true);
+  };
+
+  // Favorites and recent launches, at the top of the root folder (hidden while searching).
+  const showShortcuts = currentPath.length === 1 && !query.trim();
+  const accountLabel = (email: string) => AVAILABLE_USERS.find(u => u.email === email)?.label ?? email;
+  const shortcuts = showShortcuts && (favorites.length > 0 || recents.length > 0) && (
+    <div className="mb-3 space-y-3">
+      {favorites.length > 0 && (
+        <Panel header="Favorites">
+          {favorites.map(bot => (
+            <BotCard
+              key={bot.name}
+              bot={bot}
+              isExecuting={executingBots.has(bot.id)}
+              isDisabled={executingBots.has(bot.id) || loading}
+              onPress={() => openRunSheet(bot)}
+              lastRun={lastRunByName.get(bot.name)}
+              favorite
+            />
+          ))}
+        </Panel>
+      )}
+      {recents.length > 0 && (
+        <Panel header="Recent, tap to run again">
+          {recents.map(r => (
+            <button
+              key={r.bot.name}
+              data-row
+              onClick={() => setRepeatLaunch(r)}
+              disabled={loading}
+              aria-label={`Run ${r.bot.name} again on ${accountLabel(r.userEmail)}`}
+              className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left active:bg-page disabled:opacity-60"
+            >
+              <History size={20} className="shrink-0 text-muted" strokeWidth={1.75} />
+              <span className="min-w-0 flex-1">
+                <span className="block break-words text-[0.9375rem] text-ink">{r.bot.name}</span>
+                <span className="block truncate text-[0.8125rem] text-muted">
+                  On {accountLabel(r.userEmail)}, {formatRelative(new Date(r.at).toISOString())}
+                </span>
+              </span>
+            </button>
+          ))}
+        </Panel>
+      )}
+    </div>
+  );
+
   let content: React.ReactNode;
   if (botsLoading) {
     content = <SkeletonRows label="Loading bots" />;
@@ -222,6 +312,7 @@ export const BotManagerScreen = () => {
                 />
               </div>
             )}
+            {shortcuts}
             {bots.length === 0 ? (
               <p className="px-2 py-10 text-muted">This folder is empty.</p>
             ) : visibleBots.length === 0 ? (
@@ -239,11 +330,10 @@ export const BotManagerScreen = () => {
                     bot={item}
                     isExecuting={executingBots.has(item.id)}
                     isDisabled={executingBots.has(item.id) || loading}
-                    onPress={() => {
-                      setSelectedBot(item);
-                      setModalVisible(true);
-                    }}
+                    onPress={() => openRunSheet(item)}
                     onFolderPress={navigateToFolder}
+                    lastRun={lastRunByName.get(item.name)}
+                    favorite={isFavorite(favorites, item)}
                   />
                 ))}
               </Panel>
@@ -267,6 +357,7 @@ export const BotManagerScreen = () => {
           selectedBot && handleUserSelection(selectedBot, userEmail, hideBotAgentUi, notifyProgress)
         }
         onClose={() => setModalVisible(false)}
+        initialOptions={sheetOptions}
       />
 
       <LoadingModal
@@ -284,6 +375,14 @@ export const BotManagerScreen = () => {
           setSelectedUserEmail('');
         }}
         onConfirm={handleVariablesConfirm}
+        initialInputs={prefillInputs}
+      />
+
+      <RepeatLaunchModal
+        launch={repeatLaunch}
+        onRunAgain={runAgain}
+        onChangeOptions={changeOptions}
+        onClose={() => setRepeatLaunch(null)}
       />
 
       <BotExecutionSuccessModal

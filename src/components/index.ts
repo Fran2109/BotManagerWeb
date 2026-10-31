@@ -15,3 +15,4 @@ export { BotExecutionSuccessModal } from './BotExecutionSuccessModal';
 export { BotExecutionErrorModal } from './BotExecutionErrorModal';
 export { BotVariablesModal } from './BotVariablesModal';
 export { BotNotFoundModal } from './BotNotFoundModal';
+export { RepeatLaunchModal } from './RepeatLaunchModal';

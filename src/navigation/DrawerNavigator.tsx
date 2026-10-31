@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bot, Activity, History, MonitorSmartphone } from 'lucide-react';
+import { Bot, Activity, ChartColumn, History, MonitorSmartphone } from 'lucide-react';
 import logo from '../assets/Logo.jpg';
-import { BotManagerScreen, DeviceStatusScreen, InProgressScreen, HistoricalScreen } from '../screens';
+import { BotManagerScreen, DeviceStatusScreen, InProgressScreen, HistoricalScreen, StatisticsScreen } from '../screens';
 import { gsap, motionDuration, useGSAP } from '../lib/motion';
 import { useBackHandler } from './backHandler';
 import { DrawerContext, ROUTE_META, RouteName } from './drawerContext';
@@ -14,12 +14,13 @@ const SCREENS: Record<RouteName, { Icon: React.FC<{ size?: number }>; Screen: Re
   Bots: { Icon: Bot, Screen: BotManagerScreen },
   InProgress: { Icon: Activity, Screen: InProgressScreen },
   Historical: { Icon: History, Screen: HistoricalScreen },
+  Statistics: { Icon: ChartColumn, Screen: StatisticsScreen },
   Devices: { Icon: MonitorSmartphone, Screen: DeviceStatusScreen },
 };
 
 const GROUPS: { title: string; routes: RouteName[] }[] = [
   { title: 'Automation', routes: ['Bots'] },
-  { title: 'Activity', routes: ['InProgress', 'Historical'] },
+  { title: 'Activity', routes: ['InProgress', 'Historical', 'Statistics'] },
   { title: 'Manage', routes: ['Devices'] },
 ];
 

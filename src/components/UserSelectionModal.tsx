@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Star } from 'lucide-react';
 import { Bot, User } from '../types';
 import { useDeviceStatus } from '../hooks/useDeviceStatus';
 import { Lamp, Modal, Sheet, Switch, buttonStyles } from './ui';
 import { ensureNotifications } from '../lib/runTracker';
+import { isFavorite, toggleFavorite, useFavorites } from '../lib/launchHistory';
 
 const NOTIFY_PREF_KEY = 'botmanager:notify-progress';
 
@@ -22,6 +23,8 @@ interface UserSelectionModalProps {
   loading: boolean;
   onUserSelect: (userEmail: string, hideBotAgentUi: boolean, notifyProgress: boolean) => void;
   onClose: () => void;
+  /** Preloads the switches (e.g. "Change options" on a recent launch). */
+  initialOptions?: { hideBotAgentUi: boolean; notifyProgress: boolean } | null;
 }
 
 export const UserSelectionModal: React.FC<UserSelectionModalProps> = ({
@@ -31,18 +34,24 @@ export const UserSelectionModal: React.FC<UserSelectionModalProps> = ({
   loading,
   onUserSelect,
   onClose,
+  initialOptions = null,
 }) => {
   const { usersWithDeviceStatus, checkDevicesStatus } = useDeviceStatus();
   const [hideBotAgentUi, setHideBotAgentUi] = useState(false);
   // Remembered between launches, unlike "Run in background".
   const [notifyProgress, setNotifyProgress] = useState(readNotifyPref);
   const [notifyBlocked, setNotifyBlocked] = useState(false);
+  const favorites = useFavorites();
+  const favorite = !!selectedBot && isFavorite(favorites, selectedBot);
 
   useEffect(() => {
     if (visible) {
-      setHideBotAgentUi(false);
+      setHideBotAgentUi(initialOptions?.hideBotAgentUi ?? false);
+      if (initialOptions) setNotifyProgress(initialOptions.notifyProgress);
       setNotifyBlocked(false);
     }
+    // Only when the sheet opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   const changeNotify = async (on: boolean) => {
@@ -74,12 +83,28 @@ export const UserSelectionModal: React.FC<UserSelectionModalProps> = ({
       labelledBy="launch-title"
     >
       <Sheet>
-        <div className="px-5 pb-4 pt-2">
-          <p className="text-sm font-medium text-brand-strong">Run bot now</p>
-          <h2 id="launch-title" className="mt-0.5 break-words text-xl font-semibold leading-tight text-ink">
-            {selectedBot?.name}
-          </h2>
-          <p className="mt-1 text-muted">Pick the account whose device should run it.</p>
+        <div className="flex items-start gap-2 px-5 pb-4 pt-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-brand-strong">Run bot now</p>
+            <h2 id="launch-title" className="mt-0.5 break-words text-xl font-semibold leading-tight text-ink">
+              {selectedBot?.name}
+            </h2>
+            <p className="mt-1 text-muted">Pick the account whose device should run it.</p>
+          </div>
+          {selectedBot && (
+            <button
+              onClick={() => toggleFavorite(selectedBot)}
+              aria-pressed={favorite}
+              aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
+              className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-md active:bg-page"
+            >
+              <Star
+                size={22}
+                className={favorite ? 'text-warn' : 'text-muted'}
+                fill={favorite ? 'currentColor' : 'none'}
+              />
+            </button>
+          )}
         </div>
 
         <div className="mx-5 divide-y divide-line rounded-lg border border-line bg-page/50 px-4">
