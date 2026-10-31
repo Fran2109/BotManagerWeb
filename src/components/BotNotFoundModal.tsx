@@ -13,11 +13,11 @@ export const BotNotFoundModal: React.FC<BotNotFoundModalProps> = ({ visible, bot
   <Modal visible={visible} onRequestClose={onClose} labelledBy="not-found-title">
     <Sheet>
       <div role="alert" className="px-5 pb-5 pt-2">
-        <SearchX size={30} className="text-amber" />
-        <h2 id="not-found-title" className="mt-3 font-display text-2xl font-bold text-ink">
+        <SearchX size={30} className="text-warn" />
+        <h2 id="not-found-title" className="mt-3 text-xl font-semibold text-ink">
           {userLabel} doesn't have this bot
         </h2>
-        <p className="mt-1 text-steel">
+        <p className="mt-1 text-muted">
           "{botName}" isn't in {userLabel}'s Control Room. Pick another account, or import the bot into this one
           first.
         </p>

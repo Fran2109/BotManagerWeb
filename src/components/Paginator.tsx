@@ -69,16 +69,16 @@ export const Paginator: React.FC<PaginatorProps> = ({
       onClick={onClick}
       disabled={!enabled || loading}
       aria-label={label}
-      className="flex size-10 items-center justify-center rounded-lg text-ink active:bg-enamel disabled:text-line"
+      className="flex size-11 items-center justify-center rounded-md text-ink active:bg-page disabled:text-line"
     >
       {icon}
     </button>
   );
 
   return (
-    <nav aria-label="Pages" className="border-t border-line bg-panel px-3 pt-2 safe-bottom">
+    <nav aria-label="Pages" className="border-t border-line bg-surface px-3 pt-2 safe-bottom">
       <div className="flex items-center justify-between gap-2 px-1 text-sm">
-        <span className="text-steel">
+        <span className="text-muted">
           {totalPages <= 1
             ? totalItems === 0
               ? 'No runs'
@@ -88,7 +88,7 @@ export const Paginator: React.FC<PaginatorProps> = ({
         <button
           onClick={() => setShowDropdown(true)}
           aria-haspopup="dialog"
-          className="flex items-center gap-1 rounded-lg px-2 py-1.5 font-medium text-ink active:bg-enamel"
+          className="flex items-center gap-1 rounded-lg px-2 py-1.5 font-medium text-ink active:bg-page"
         >
           {pageSize} per page <ChevronDown size={14} />
         </button>
@@ -107,8 +107,8 @@ export const Paginator: React.FC<PaginatorProps> = ({
                 disabled={loading}
                 aria-label={`Page ${page + 1}`}
                 aria-current={current ? 'page' : undefined}
-                className={`flex size-10 items-center justify-center rounded-lg text-sm font-semibold ${
-                  current ? 'bg-ink text-panel' : 'text-ink active:bg-enamel'
+                className={`flex size-11 items-center justify-center rounded-md text-sm font-semibold ${
+                  current ? 'bg-brand-strong text-white' : 'text-ink active:bg-page'
                 }`}
               >
                 {page + 1}
@@ -126,8 +126,8 @@ export const Paginator: React.FC<PaginatorProps> = ({
         variant="center"
         labelledBy="page-size-title"
       >
-        <div className="overflow-hidden rounded-2xl bg-panel py-2 shadow-xl">
-          <h2 id="page-size-title" className="px-5 pb-1 pt-2 font-display text-lg font-semibold text-ink">
+        <div className="overflow-hidden rounded-lg bg-surface py-2 shadow-xl">
+          <h2 id="page-size-title" className="px-5 pb-1 pt-2 text-base font-semibold text-ink">
             Runs per page
           </h2>
           {pageSizeOptions.map(option => (
@@ -137,7 +137,7 @@ export const Paginator: React.FC<PaginatorProps> = ({
               data-autofocus={option === pageSize || undefined}
               aria-pressed={option === pageSize}
               className={`block w-full px-5 py-3 text-left ${
-                option === pageSize ? 'bg-signal/25 font-semibold text-ink' : 'text-ink active:bg-enamel'
+                option === pageSize ? 'bg-brand/25 font-semibold text-ink' : 'text-ink active:bg-page'
               }`}
             >
               {option}

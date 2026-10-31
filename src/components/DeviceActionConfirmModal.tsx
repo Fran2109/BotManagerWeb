@@ -53,12 +53,12 @@ export const DeviceActionConfirmModal: React.FC<DeviceActionConfirmModalProps> =
       {c && (
         <Sheet>
           <div className="px-5 pb-5 pt-2">
-            <c.Icon size={28} className={c.destructive ? 'text-stop' : 'text-ink'} />
-            <h2 id="device-action-title" className="mt-3 font-display text-2xl font-bold text-ink">
+            <c.Icon size={28} className={c.destructive ? 'text-fail' : 'text-ink'} />
+            <h2 id="device-action-title" className="mt-3 text-xl font-semibold text-ink">
               {c.title}
             </h2>
             <p className="mt-0.5 font-medium text-ink-soft">{userLabel}</p>
-            <p className="mt-2 text-steel">{c.body}</p>
+            <p className="mt-2 text-muted">{c.body}</p>
 
             <div className="mt-6 flex gap-3">
               {/* Safe action first and focused, so a stray tap or Enter doesn't trigger it. */}

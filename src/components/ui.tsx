@@ -155,7 +155,7 @@ export const Modal: React.FC<ModalProps> = ({
 
 /** Bottom-sheet surface used inside <Modal variant="sheet">. */
 export const Sheet: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <div className={`flex max-h-[92dvh] flex-col overflow-y-auto rounded-t-2xl bg-panel safe-bottom ${className}`}>
+  <div className={`flex max-h-[92dvh] flex-col overflow-y-auto rounded-t-xl bg-surface safe-bottom ${className}`}>
     <span aria-hidden className="mx-auto mb-1 mt-2.5 h-1 w-10 shrink-0 rounded-full bg-line" />
     {children}
   </div>
@@ -214,7 +214,7 @@ export const Switch: React.FC<SwitchProps> = ({ value, onValueChange, disabled, 
       <label htmlFor={id} className="min-w-0">
         <span className="block font-medium text-ink">{children}</span>
         {hint ? (
-          <span id={`${id}-hint`} className="block text-sm text-steel">
+          <span id={`${id}-hint`} className="block text-sm text-muted">
             {hint}
           </span>
         ) : null}
@@ -225,13 +225,14 @@ export const Switch: React.FC<SwitchProps> = ({ value, onValueChange, disabled, 
 };
 
 const buttonBase =
-  'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors disabled:opacity-50';
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-md font-semibold transition-colors disabled:opacity-50';
 
 export const buttonStyles = {
-  primary: `${buttonBase} bg-ink px-4 py-3 text-panel active:bg-ink-soft`,
-  secondary: `${buttonBase} border border-line bg-panel px-4 py-3 text-ink active:bg-enamel`,
-  danger: `${buttonBase} bg-stop px-4 py-3 text-white active:brightness-90`,
-  ghost: `${buttonBase} px-2 py-1.5 text-ink-soft active:bg-enamel`,
+  /** AA orange, for the one main action of a screen or dialog. */
+  primary: `${buttonBase} bg-brand-strong px-4 py-2.5 text-white active:brightness-90`,
+  secondary: `${buttonBase} border border-line bg-surface px-4 py-2.5 text-ink active:bg-page`,
+  danger: `${buttonBase} bg-fail px-4 py-2.5 text-white active:brightness-90`,
+  ghost: `${buttonBase} px-2 text-ink-soft active:bg-page`,
 };
 
 /** Small refresh control for list headers. */
@@ -241,10 +242,65 @@ export const RefreshButton: React.FC<{ onClick: () => void; busy: boolean; label
   label = 'Refresh',
   busyLabel = 'Checking',
 }) => (
-  <button onClick={onClick} disabled={busy} className={`${buttonStyles.secondary} px-3 py-2 text-sm`}>
+  <button onClick={onClick} disabled={busy} className={`${buttonStyles.secondary} shrink-0 px-3 text-sm`}>
     <RotateCw size={16} className={busy ? 'animate-spin motion-reduce:animate-none' : ''} />
     {busy ? busyLabel : label}
   </button>
+);
+
+/** White bordered container for lists, like a Control Room table. */
+export const Panel: React.FC<{ children: React.ReactNode; className?: string; header?: React.ReactNode }> = ({
+  children,
+  className = '',
+  header,
+}) => (
+  <div className={`overflow-hidden rounded-lg border border-line bg-surface ${className}`}>
+    {header ? (
+      <div className="border-b border-line bg-page/60 px-4 py-2 text-sm font-medium text-muted">{header}</div>
+    ) : null}
+    <div className="divide-y divide-line">{children}</div>
+  </div>
+);
+
+export type StatusTone = 'ok' | 'fail' | 'run' | 'warn' | 'neutral';
+
+const TONE_CLASSES: Record<StatusTone, string> = {
+  ok: 'bg-ok/10 text-ok',
+  fail: 'bg-fail/10 text-fail',
+  run: 'bg-run/10 text-run',
+  warn: 'bg-warn/10 text-warn',
+  neutral: 'bg-ink/[0.06] text-muted',
+};
+
+/** Status label with icon and text, like the Control Room's status column. */
+export const StatusBadge: React.FC<{ tone: StatusTone; icon?: React.ReactNode; children: React.ReactNode }> = ({
+  tone,
+  icon,
+  children,
+}) => (
+  <span
+    className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[13px] font-medium ${TONE_CLASSES[tone]}`}
+  >
+    {icon}
+    {children}
+  </span>
+);
+
+/** Placeholder rows shaped like a list while it loads. */
+export const SkeletonRows: React.FC<{ rows?: number; label: string }> = ({ rows = 6, label }) => (
+  <div role="status" aria-label={label} className="mx-3 my-3">
+    <div className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="flex items-center gap-3 px-4 py-4">
+          <span className="skeleton size-5 shrink-0 rounded-full" />
+          <span className="flex-1 space-y-2">
+            <span className="skeleton block h-3.5" style={{ width: `${55 + ((i * 17) % 35)}%` }} />
+            <span className="skeleton block h-3 w-1/3" />
+          </span>
+        </div>
+      ))}
+    </div>
+  </div>
 );
 
 /** Gauge-style progress bar; GSAP eases it to each new value from the last poll. */
@@ -296,8 +352,8 @@ export const useListEntrance = (scope: React.RefObject<HTMLElement | null>, read
 export const LoadingState: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
   <div role="status" className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
     <Spinner className="size-8 border-[3px]" color="var(--color-ink)" />
-    <p className="font-display text-xl font-semibold text-ink">{title}</p>
-    {subtitle ? <p className="text-sm text-steel">{subtitle}</p> : null}
+    <p className="text-lg font-semibold text-ink">{title}</p>
+    {subtitle ? <p className="text-sm text-muted">{subtitle}</p> : null}
   </div>
 );
 
@@ -318,11 +374,11 @@ export const ErrorState: React.FC<{
   );
   return (
     <div ref={ref} role="alert" className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-4 px-5 py-12">
-      <TriangleAlert size={32} className="text-stop" />
+      <TriangleAlert size={32} className="text-fail" />
       <div>
-        <h2 className="font-display text-2xl font-semibold text-ink">{title}</h2>
-        <p className="mt-1 break-words text-steel">{error}</p>
-        {help ? <p className="mt-2 text-sm text-steel">{help}</p> : null}
+        <h2 className="text-xl font-semibold text-ink">{title}</h2>
+        <p className="mt-1 break-words text-muted">{error}</p>
+        {help ? <p className="mt-2 text-sm text-muted">{help}</p> : null}
       </div>
       <button onClick={onRetry} className={`${buttonStyles.primary} self-start`}>
         <RotateCw size={18} />

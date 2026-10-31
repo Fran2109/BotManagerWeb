@@ -13,11 +13,11 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({ visible, title, mess
   <Modal visible={visible} onRequestClose={onConfirm} labelledBy="success-title">
     <Sheet>
       <div className="px-5 pb-5 pt-2">
-        <CircleCheck size={30} className="text-go" />
-        <h2 id="success-title" className="mt-3 font-display text-2xl font-bold text-ink">
+        <CircleCheck size={30} className="text-ok" />
+        <h2 id="success-title" className="mt-3 text-xl font-semibold text-ink">
           {title}
         </h2>
-        <p className="mt-1 whitespace-pre-line text-steel">{message}</p>
+        <p className="mt-1 whitespace-pre-line text-muted">{message}</p>
         <button onClick={onConfirm} data-autofocus className={`${buttonStyles.primary} mt-6 w-full`}>
           OK
         </button>

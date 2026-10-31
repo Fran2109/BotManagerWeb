@@ -1,28 +1,39 @@
 @import "tailwindcss";
 
-/* Industrial control panel: machine-grey enamel, slate ink, signal yellow for the one
-   action that launches a robot, and indicator-lamp colors for state. */
+/* Styled after the Automation Anywhere Control Room: graphite navigation from the logo,
+   a light work area, AA orange for the primary action and active states, and the logo's
+   orange gradient as the accent line. */
 @theme {
-  --font-sans: "Barlow", system-ui, sans-serif;
-  --font-display: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-display: "IBM Plex Sans", system-ui, sans-serif;
 
-  --color-enamel: #e4e6e1;
-  --color-panel: #f5f6f2;
-  --color-ink: #1f2a30;
-  --color-ink-soft: #3b474e;
-  --color-steel: #626d73;
-  --color-line: #cdd1cb;
-  --color-signal: #f2b705;
-  --color-signal-deep: #b88a00;
-  --color-go: #1f9d55;
-  --color-stop: #d2382b;
-  --color-amber: #e08a00;
+  --color-nav: #2b2c2e;
+  --color-nav-soft: #404041;
+  --color-page: #f3f4f6;
+  --color-surface: #ffffff;
+  --color-ink: #1f2328;
+  --color-ink-soft: #3d444d;
+  --color-muted: #59636e;
+  --color-line: #d8dee4;
+  --color-brand: #f05d28;
+  --color-brand-strong: #c4460f;
+  --color-brand-tint: #fff1ea;
+  --color-ok: #1a7f37;
+  --color-fail: #cf222e;
+  --color-run: #0969da;
+  --color-warn: #b35900;
 
   --animate-lamp-wait: lamp-wait 1.2s ease-in-out infinite;
+  --animate-shimmer: shimmer 1.4s ease-in-out infinite;
 
   @keyframes lamp-wait {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.35; }
+  }
+
+  @keyframes shimmer {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
   }
 }
 
@@ -34,7 +45,7 @@ body,
 
 body {
   margin: 0;
-  background: var(--color-enamel);
+  background: var(--color-page);
   color: var(--color-ink);
   font-family: var(--font-sans);
   font-feature-settings: "tnum" 1;
@@ -51,7 +62,7 @@ button:disabled {
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-signal);
+  outline: 2px solid var(--color-brand-strong);
   outline-offset: 2px;
 }
 
@@ -71,30 +82,34 @@ button:disabled {
   scrollbar-width: none;
 }
 
-/* Indicator lamp: the state of an account, device or execution. */
+/* The AA logo gradient, used as a thin accent line. */
+.brand-line {
+  background: linear-gradient(90deg, #f05d28, #ffab3e);
+}
+
+/* Indicator dot for connection state (devices, accounts). */
 .lamp {
   display: inline-block;
   width: 0.625rem;
   height: 0.625rem;
   flex-shrink: 0;
   border-radius: 9999px;
-  background: #9aa3a7;
-  box-shadow: inset 0 -1px 1px rgb(0 0 0 / 0.25);
+  background: #8c959f;
 }
 
 .lamp[data-state="on"] {
-  background: var(--color-go);
-  box-shadow: 0 0 0 3px rgb(31 157 85 / 0.18), 0 0 8px rgb(31 157 85 / 0.6);
+  background: var(--color-ok);
+  box-shadow: 0 0 0 3px rgb(26 127 55 / 0.16);
 }
 
 .lamp[data-state="off"] {
-  background: var(--color-stop);
-  box-shadow: 0 0 0 3px rgb(210 56 43 / 0.14);
+  background: var(--color-fail);
+  box-shadow: 0 0 0 3px rgb(207 34 46 / 0.12);
 }
 
 .lamp[data-state="wait"] {
-  background: var(--color-amber);
-  box-shadow: 0 0 0 3px rgb(224 138 0 / 0.16);
+  background: var(--color-warn);
+  box-shadow: 0 0 0 3px rgb(179 89 0 / 0.14);
   animation: var(--animate-lamp-wait);
 
   @media (prefers-reduced-motion: reduce) {
@@ -102,32 +117,15 @@ button:disabled {
   }
 }
 
-/* The run control: a physical yellow push-button in a dark bezel. */
-.push-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9999px;
-  color: var(--color-ink);
-  background: radial-gradient(circle at 35% 30%, #ffd84d, var(--color-signal) 62%);
-  box-shadow:
-    0 0 0 3px var(--color-ink),
-    0 4px 0 3px var(--color-ink),
-    inset 0 -3px 0 rgb(0 0 0 / 0.14);
-  transition: transform 80ms ease-out, box-shadow 80ms ease-out;
-}
+/* Loading placeholder shaped like the content it replaces. */
+.skeleton {
+  border-radius: 0.25rem;
+  background: #e6e9ed;
+  animation: var(--animate-shimmer);
 
-.push-button:active:not(:disabled) {
-  transform: translateY(3px);
-  box-shadow:
-    0 0 0 3px var(--color-ink),
-    0 1px 0 3px var(--color-ink),
-    inset 0 -1px 0 rgb(0 0 0 / 0.14);
-}
-
-.push-button:disabled {
-  background: #c9ccc6;
-  color: var(--color-steel);
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 }
 
 /* Native <dialog> (see components/ui.tsx). */
@@ -147,7 +145,7 @@ dialog:modal {
 dialog::backdrop {
   overflow: hidden;
   overscroll-behavior: contain;
-  background: rgb(31 42 48 / 0.55);
+  background: rgb(31 35 40 / 0.5);
 }
 
 dialog[open]::backdrop {
@@ -184,13 +182,13 @@ dialog.dialog-page {
 
 /* <input type="checkbox" switch>: native in Safari, polyfilled elsewhere (main.tsx). */
 input[type="checkbox"][switch] {
-  accent-color: var(--color-go);
+  accent-color: var(--color-brand-strong);
   margin: 0;
   cursor: pointer;
 }
 
 input[type="checkbox"][switch]:focus-visible {
-  outline: 3px solid var(--color-signal);
+  outline: 2px solid var(--color-brand-strong);
   outline-offset: 4px;
 }
 

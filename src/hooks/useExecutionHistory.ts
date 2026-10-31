@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { User, ActivityItem } from '../types';
 import { getToken, getExecutionHistory } from '../Functions';
 import { DEFAULT_PASSWORD } from '../constants/users';
+import { describeError } from '../lib/errors';
 
 interface HistoryData {
   page: {
@@ -47,7 +48,7 @@ export const useExecutionHistory = () => {
 
     } catch (err: any) {
       console.error('Error fetching execution history:', err);
-      setError(err.message || 'Unknown error loading execution history');
+      setError(describeError(err));
       setHistory([]);
     } finally {
       setLoading(false);

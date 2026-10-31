@@ -3,6 +3,7 @@ import { Bot, BotInput } from '../types';
 import { getToken, getUserId, getDeviceStatus, deployBot, checkBotExists } from '../Functions';
 import { getBotInput } from '../utils/botInputs';
 import { DEFAULT_PASSWORD } from '../constants/users';
+import { describeError } from '../lib/errors';
 
 export type ExecuteBotOptions = {
   botInputs?: BotInput;
@@ -76,7 +77,7 @@ export const useBotExecution = () => {
 
     } catch (error: any) {
       console.error('Error executing bot:', error);
-      onError(error.message || 'Unknown error');
+      onError(describeError(error));
     } finally {
       setLoading(false);
       setLoadingMessage('');

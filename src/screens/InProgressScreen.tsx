@@ -1,27 +1,25 @@
-import { useEffect, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { AVAILABLE_USERS } from '../constants/users';
 import { useInProgressActivities } from '../hooks/useInProgressActivities';
+import { usePolling } from '../hooks/usePolling';
 import { ScreenWrapper, ActivityCard } from '../components';
 import { ScreenTitle } from '../components/ScreenWrapper';
-import { RefreshButton, useListEntrance } from '../components/ui';
+import { Panel, RefreshButton, useListEntrance } from '../components/ui';
 import { StatusStrip } from './SummaryHeader';
+
+const formatTime = (ms: number) =>
+  new Date(ms).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
 export const InProgressScreen = () => {
   const { usersWithActivities, checkActivitiesStatus, getTotalRunningBots } = useInProgressActivities();
   const listRef = useRef<HTMLDivElement>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
-  const handleRefresh = () => {
-    checkActivitiesStatus(AVAILABLE_USERS, false);
-  };
+  const check = (silent: boolean) =>
+    checkActivitiesStatus(AVAILABLE_USERS, silent).then(() => setUpdatedAt(Date.now()));
 
-  // Initial check, then refresh silently every 10 seconds while this screen is mounted.
-  useEffect(() => {
-    checkActivitiesStatus(AVAILABLE_USERS, false);
-    const interval = setInterval(() => {
-      checkActivitiesStatus(AVAILABLE_USERS, true);
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [checkActivitiesStatus]);
+  // Every 10 seconds while the app is visible; paused in the background.
+  usePolling(check, 10000);
 
   const runningBotsCount = getTotalRunningBots();
   const totalUsers = usersWithActivities.length;
@@ -35,22 +33,22 @@ export const InProgressScreen = () => {
       <div className="flex-1 overflow-y-auto">
         <div ref={listRef} className="mx-auto w-full max-w-3xl safe-bottom">
           <ScreenTitle
-            title="Running now"
-            subtitle="Updates every 10 seconds"
-            action={<RefreshButton onClick={handleRefresh} busy={isRefreshing} />}
+            title="In progress"
+            subtitle={updatedAt ? `Updated ${formatTime(updatedAt)}, refreshes every 10 s` : 'Refreshes every 10 s'}
+            action={<RefreshButton onClick={() => check(false)} busy={isRefreshing} />}
           />
           <StatusStrip
             items={[
-              { value: runningBotsCount, label: 'Running', lamp: 'on' },
-              { value: totalUsers - runningBotsCount - checkingCount, label: 'Idle', lamp: 'idle' },
+              { value: runningBotsCount, label: 'In progress', lamp: 'on' },
+              { value: totalUsers - runningBotsCount - checkingCount, label: 'No activity', lamp: 'idle' },
               { value: checkingCount, label: 'Checking', lamp: 'wait' },
             ]}
           />
-          <div className="mx-3 mb-4 divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
+          <Panel className="mx-3 mb-4" header="Accounts">
             {usersWithActivities.map(item => (
               <ActivityCard key={item.id} user={item} />
             ))}
-          </div>
+          </Panel>
         </div>
       </div>
     </ScreenWrapper>

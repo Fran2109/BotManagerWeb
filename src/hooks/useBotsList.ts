@@ -4,6 +4,7 @@ import { getBotsList, getFolderContents, getToken } from '../Functions';
 import { DEFAULT_PASSWORD } from '../constants/users';
 import { BreadcrumbItem } from '../components/Breadcrumb';
 import { USER_FRANCISCO1 } from '@env';
+import { describeError } from '../lib/errors';
 
 interface BotFromAPI {
   id: string;
@@ -82,7 +83,7 @@ export const useBotsList = () => {
       setBots(sortedBots);
     } catch (err: any) {
       console.error('Error fetching bots:', err);
-      setError(err.message || 'Unknown error loading bots');
+      setError(describeError(err));
     } finally {
       setLoading(false);
     }

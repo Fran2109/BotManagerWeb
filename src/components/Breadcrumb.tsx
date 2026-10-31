@@ -13,25 +13,25 @@ interface BreadcrumbProps {
 
 export const Breadcrumb: React.FC<BreadcrumbProps> = ({ path, onNavigate }) => {
   return (
-    <nav aria-label="Folder path" className="border-b border-line bg-panel">
+    <nav aria-label="Folder path" className="border-b border-line bg-surface">
       <ol className="no-scrollbar flex items-center overflow-x-auto px-3 py-2">
         {path.map((item, index) => {
           const isCurrent = index === path.length - 1;
           return (
             <li key={item.id} className="flex shrink-0 items-center">
               {isCurrent ? (
-                <span aria-current="page" className="px-1.5 py-1 text-sm font-semibold text-ink">
+                <span aria-current="page" className="flex min-h-11 items-center px-1.5 text-sm font-semibold text-ink">
                   {item.name}
                 </span>
               ) : (
                 <>
                   <button
                     onClick={() => onNavigate(item, index)}
-                    className="rounded px-1.5 py-1 text-sm text-steel underline-offset-2 active:underline"
+                    className="min-h-11 rounded px-1.5 text-sm text-brand-strong underline-offset-2 active:underline"
                   >
                     {item.name}
                   </button>
-                  <ChevronRight aria-hidden size={14} className="text-steel/70" />
+                  <ChevronRight aria-hidden size={14} className="text-muted/70" />
                 </>
               )}
             </li>

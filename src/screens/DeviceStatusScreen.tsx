@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Power, Camera, RefreshCw } from 'lucide-react';
 import { AVAILABLE_USERS, DEFAULT_PASSWORD } from '../constants/users';
 import { DEVICE_SHUTDOWN_BOT_TASK, DEVICE_SCREENSHOT_BOT_TASK } from '../constants/deviceAutomationBots';
@@ -13,11 +13,13 @@ import {
   LoadingModal,
 } from '../components';
 import { ScreenTitle } from '../components/ScreenWrapper';
-import { Lamp, RefreshButton, Spinner, useListEntrance } from '../components/ui';
+import { Lamp, Panel, RefreshButton, Spinner, StatusBadge, useListEntrance } from '../components/ui';
+import { usePolling } from '../hooks/usePolling';
 import { User } from '../types';
 import { getToken, getDeviceInfo, resetDevice, invalidateCachedDevice } from '../Functions';
 import { deviceAutomationBot } from '../utils/deviceAutomationBot';
 import { StatusStrip } from './SummaryHeader';
+import { describeError } from '../lib/errors';
 
 interface DeviceStatusItemProps {
   user: User;
@@ -40,7 +42,7 @@ const DeviceStatusItem: React.FC<DeviceStatusItemProps> = ({
   isScreenshotRunning,
   automationBusy,
 }) => {
-  const statusLabel = user.checkingDevice ? 'Checking' : user.deviceConnected ? 'Online' : 'Offline';
+  const statusLabel = user.checkingDevice ? 'Checking' : user.deviceConnected ? 'Connected' : 'Disconnected';
   const canUseDeviceActions = !!user.deviceConnected && !user.checkingDevice && !automationBusy;
 
   const actionButton = (
@@ -55,8 +57,8 @@ const DeviceStatusItem: React.FC<DeviceStatusItemProps> = ({
       <button
         onClick={onPress}
         disabled={!enabled}
-        className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 py-2.5 text-sm font-semibold transition-colors active:bg-enamel disabled:border-line disabled:text-steel/50 ${
-          tone === 'stop' ? 'border-stop/40 text-stop' : 'border-line text-ink'
+        className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-md border px-1 py-2 text-[13px] font-semibold leading-none transition-colors active:bg-page disabled:border-line disabled:text-muted/50 ${
+          tone === 'stop' ? 'border-fail/40 text-fail' : 'border-line text-ink'
         }`}
       >
         {running ? <Spinner className="size-4" /> : <Icon size={17} strokeWidth={2.25} />}
@@ -68,24 +70,29 @@ const DeviceStatusItem: React.FC<DeviceStatusItemProps> = ({
   return (
     <div data-row className="px-4 py-3.5">
       <div className="flex items-center gap-3">
-        <Lamp state={user.checkingDevice ? 'wait' : user.deviceConnected ? 'on' : 'off'} />
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-ink">{user.label}</p>
-          <p className="truncate text-sm text-steel">
-            {user.email}
-            {user.deviceConnected && !user.checkingDevice && user.primaryDeviceId
-              ? `, device ${user.primaryDeviceId}`
-              : ''}
-          </p>
+          <p className="truncate text-sm text-muted">{user.email}</p>
+          {user.deviceConnected && !user.checkingDevice && user.primaryDeviceId ? (
+            <p className="text-sm text-muted">Device ID {user.primaryDeviceId}</p>
+          ) : null}
         </div>
-        <span className="shrink-0 text-sm font-medium text-ink-soft">{statusLabel}</span>
+        <StatusBadge
+          tone={user.checkingDevice ? 'warn' : user.deviceConnected ? 'ok' : 'fail'}
+          icon={<Lamp state={user.checkingDevice ? 'wait' : user.deviceConnected ? 'on' : 'off'} className="size-2" />}
+        >
+          {statusLabel}
+        </StatusBadge>
       </div>
 
-      <div className="mt-3 flex gap-2 pl-[22px]">
+      <div className="mt-3 flex gap-2">
         {actionButton('Screenshot', () => onScreenshot(user), isScreenshotRunning, Camera, 'ink')}
         {actionButton('Reset', () => onResetDevice(user), isResetting, RefreshCw, 'ink')}
         {actionButton('Shut down', () => onShutdown(user), isShutdownRunning, Power, 'stop')}
       </div>
+      {!user.checkingDevice && !user.deviceConnected && (
+        <p className="mt-2 text-sm text-muted">Actions are available when the device is connected.</p>
+      )}
     </div>
   );
 };
@@ -147,7 +154,7 @@ export const DeviceStatusScreen = () => {
     } catch (error: any) {
       invalidateCachedDevice(user.email);
       clearResetting();
-      setErrorMessage(`Failed to reset device for ${user.label}: ${error.message}`);
+      setErrorMessage(`Couldn't reset ${user.label}'s device. ${describeError(error)}`);
       setErrorModalVisible(true);
     }
   }, []);
@@ -198,24 +205,18 @@ export const DeviceStatusScreen = () => {
     }
   };
 
-  // Initial check, then refresh silently every 5 seconds while this screen is mounted.
-  useEffect(() => {
-    checkDevicesStatus(AVAILABLE_USERS, false);
-    const interval = setInterval(() => {
-      checkDevicesStatus(AVAILABLE_USERS, true);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [checkDevicesStatus]);
+  // Every 5 seconds while the app is visible; paused in the background.
+  usePolling(silent => checkDevicesStatus(AVAILABLE_USERS, silent), 5000);
 
 
   const lastUpdatedLabel =
     lastCheckedAt != null
-      ? `Updated at ${new Date(lastCheckedAt).toLocaleTimeString(undefined, {
+      ? `Updated ${new Date(lastCheckedAt).toLocaleTimeString(undefined, {
           hour: '2-digit',
           minute: '2-digit',
           second: '2-digit',
-        })}`
-      : 'Updates every 5 seconds';
+        })}, refreshes every 5 s`
+      : 'Refreshes every 5 s';
 
   const connectedCount = usersWithDeviceStatus.filter(user => user.deviceConnected).length;
   const totalCount = usersWithDeviceStatus.length;
@@ -237,12 +238,12 @@ export const DeviceStatusScreen = () => {
           />
           <StatusStrip
             items={[
-              { value: connectedCount, label: 'Online', lamp: 'on' },
-              { value: totalCount - connectedCount - checkingCount, label: 'Offline', lamp: 'off' },
+              { value: connectedCount, label: 'Connected', lamp: 'on' },
+              { value: totalCount - connectedCount - checkingCount, label: 'Disconnected', lamp: 'off' },
               { value: checkingCount, label: 'Checking', lamp: 'wait' },
             ]}
           />
-          <div className="mx-3 mb-4 divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
+          <Panel className="mx-3 mb-4" header="Accounts and their devices">
             {usersWithDeviceStatus.map(item => {
               const shutdownId = deviceAutomationBot(item.id, DEVICE_SHUTDOWN_BOT_TASK, 'shutdown').id;
               const screenshotId = deviceAutomationBot(item.id, DEVICE_SCREENSHOT_BOT_TASK, 'screenshot').id;
@@ -260,7 +261,7 @@ export const DeviceStatusScreen = () => {
                 />
               );
             })}
-          </div>
+          </Panel>
         </div>
       </div>
 

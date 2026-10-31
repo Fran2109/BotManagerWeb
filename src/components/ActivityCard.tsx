@@ -1,6 +1,7 @@
 import React from 'react';
 import { UserWithActivity } from '../types';
-import { Lamp, ProgressBar } from './ui';
+import { Loader } from 'lucide-react';
+import { ProgressBar, Spinner, StatusBadge } from './ui';
 
 interface ActivityCardProps {
   user: UserWithActivity;
@@ -48,23 +49,26 @@ const getProgressColor = (progress: number): string => {
   return '#1f9d55';
 };
 
-/** One account row on the "Running now" screen. */
+/** One account row on the In progress screen, with Control Room status labels. */
 export const ActivityCard: React.FC<ActivityCardProps> = ({ user }) => {
-  const header = (lamp: React.ReactNode, state: string) => (
+  const header = (badge: React.ReactNode) => (
     <div className="flex items-center gap-3">
-      {lamp}
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-ink">{user.label}</p>
-        <p className="truncate text-sm text-steel">{user.email}</p>
+        <p className="truncate text-sm text-muted">{user.email}</p>
       </div>
-      <span className="shrink-0 text-sm font-medium text-ink-soft">{state}</span>
+      {badge}
     </div>
   );
 
   if (user.checkingActivity) {
     return (
       <div data-row className="px-4 py-3.5">
-        {header(<Lamp state="wait" />, 'Checking')}
+        {header(
+          <StatusBadge tone="warn" icon={<Spinner className="size-3" />}>
+            Checking
+          </StatusBadge>,
+        )}
       </div>
     );
   }
@@ -72,7 +76,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({ user }) => {
   if (!user.activity) {
     return (
       <div data-row className="px-4 py-3.5">
-        {header(<Lamp state="idle" />, 'Idle')}
+        {header(<StatusBadge tone="neutral">No activity</StatusBadge>)}
       </div>
     );
   }
@@ -82,24 +86,28 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({ user }) => {
     Math.round(((activity.currentLine - 1) / activity.totalLines) * 100) || activity.progress || 0;
 
   return (
-    <div data-row className="bg-signal/10 px-4 py-4">
-      {header(<Lamp state="on" />, 'Running')}
+    <div data-row className="border-l-4 border-run px-4 py-4">
+      {header(
+        <StatusBadge tone="run" icon={<Loader size={13} className="animate-spin motion-reduce:animate-none" />}>
+          In progress
+        </StatusBadge>,
+      )}
 
-      <div className="mt-3 ml-[22px] space-y-3">
+      <div className="mt-3 space-y-3">
         <div>
-          <p className="break-words font-display text-lg font-semibold leading-snug text-ink">{activity.fileName}</p>
-          <p className="text-sm text-steel">
+          <p className="break-words text-base font-semibold leading-snug text-ink">{activity.fileName}</p>
+          <p className="text-sm text-muted">
             on {activity.deviceName}
             {activity.currentBotName && activity.currentBotName !== activity.fileName
               ? `, now in ${activity.currentBotName}`
               : ''}
           </p>
-          {activity.command && <p className="mt-0.5 break-words text-sm text-steel">Step: {activity.command}</p>}
+          {activity.command && <p className="mt-0.5 break-words text-sm text-muted">Step: {activity.command}</p>}
         </div>
 
         <div>
           <div className="mb-1 flex justify-between text-sm">
-            <span className="text-steel">
+            <span className="text-muted">
               Line {activity.currentLine} of {activity.totalLines}
             </span>
             <span className="font-semibold text-ink">{progressPercentage}%</span>
@@ -113,11 +121,11 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({ user }) => {
 
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <div>
-            <dt className="text-steel">Started</dt>
+            <dt className="text-muted">Started</dt>
             <dd className="font-medium text-ink">{formatDateTime(activity.startDateTime)}</dd>
           </div>
           <div>
-            <dt className="text-steel">Running for</dt>
+            <dt className="text-muted">Running for</dt>
             <dd className="font-medium text-ink">{formatDuration(activity.startDateTime)}</dd>
           </div>
         </dl>

@@ -10,23 +10,23 @@ interface ScreenWrapperProps {
 
 export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({ children, currentPath, onBackPress }) => {
   return (
-    <div className="flex h-full flex-col bg-enamel">
+    <div className="flex h-full flex-col bg-page">
       <Header currentPath={currentPath} onBackPress={onBackPress} />
       <main className="flex min-h-0 flex-1 flex-col">{children}</main>
     </div>
   );
 };
 
-/** Screen title block: left-aligned, condensed display type. */
+/** Page title row, like the Control Room's page headers: title, context line, actions. */
 export const ScreenTitle: React.FC<{ title: string; subtitle?: React.ReactNode; action?: React.ReactNode }> = ({
   title,
   subtitle,
   action,
 }) => (
-  <div className="flex items-end justify-between gap-3 px-4 pb-3 pt-5">
+  <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-4">
     <div className="min-w-0">
-      <h1 className="font-display text-[28px] font-bold leading-none text-ink">{title}</h1>
-      {subtitle ? <p className="mt-1.5 text-sm text-steel">{subtitle}</p> : null}
+      <h1 className="text-[22px] font-semibold leading-tight text-ink">{title}</h1>
+      {subtitle ? <p className="mt-0.5 text-sm text-muted">{subtitle}</p> : null}
     </div>
     {action}
   </div>

@@ -47,45 +47,46 @@ export const UserSelectionModal: React.FC<UserSelectionModalProps> = ({
     >
       <Sheet>
         <div className="px-5 pb-4 pt-2">
-          <h2 id="launch-title" className="font-display text-2xl font-bold leading-tight text-ink">
-            Run {selectedBot?.name}
+          <p className="text-sm font-medium text-brand-strong">Run bot now</p>
+          <h2 id="launch-title" className="mt-0.5 break-words text-xl font-semibold leading-tight text-ink">
+            {selectedBot?.name}
           </h2>
-          <p className="mt-1 text-steel">Pick the account whose PC should run it.</p>
+          <p className="mt-1 text-muted">Pick the account whose device should run it.</p>
         </div>
 
-        <div className="mx-5 rounded-xl border border-line bg-enamel/50 px-4 py-3">
+        <div className="mx-5 rounded-lg border border-line bg-page/50 px-4 py-3">
           <Switch value={hideBotAgentUi} onValueChange={setHideBotAgentUi} hint="The bot runs without opening its window on the PC">
             Run in background
           </Switch>
         </div>
 
         <div className="mt-5 flex items-baseline justify-between px-5 pb-2">
-          <h3 className="font-display text-lg font-semibold text-ink">Accounts</h3>
-          <p className="text-sm text-steel">
-            {readyCount} of {list.length} online
+          <h3 className="text-base font-semibold text-ink">Accounts</h3>
+          <p className="text-sm text-muted">
+            {readyCount} of {list.length} connected
           </p>
         </div>
 
-        <ul className="mx-5 divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
+        <ul className="mx-5 divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
           {list.length === 0 ? (
-            <li className="px-4 py-6 text-center text-steel">No accounts configured</li>
+            <li className="px-4 py-6 text-center text-muted">No accounts configured</li>
           ) : (
             list.map(item => {
               const deviceConnected = item.deviceConnected ?? false;
               const isChecking = item.checkingDevice ?? false;
               const isDisabled = loading || !deviceConnected;
-              const state = isChecking ? 'Checking' : deviceConnected ? 'Online' : 'Offline';
+              const state = isChecking ? 'Checking' : deviceConnected ? 'Connected' : 'Disconnected';
               return (
                 <li key={item.id}>
                   <button
                     onClick={() => onUserSelect(item.email, hideBotAgentUi)}
                     disabled={isDisabled}
-                    className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-enamel disabled:opacity-55"
+                    className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-page disabled:opacity-55"
                   >
                     <Lamp state={isChecking ? 'wait' : deviceConnected ? 'on' : 'off'} />
                     <span className="min-w-0 flex-1">
                       <span className="block font-semibold text-ink">{item.label}</span>
-                      <span className="block truncate text-sm text-steel">{item.email}</span>
+                      <span className="block truncate text-sm text-muted">{item.email}</span>
                     </span>
                     <span className="shrink-0 text-sm text-ink-soft">{state}</span>
                     {!isDisabled && <ChevronRight size={18} className="shrink-0 text-ink" />}

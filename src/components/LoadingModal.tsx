@@ -23,16 +23,16 @@ export const LoadingModal: React.FC<LoadingModalProps> = ({ visible, message }) 
 
   return (
     <Modal visible={visible} dismissible={false} variant="center" labelledBy="loading-title">
-      <div ref={scope} className="rounded-2xl bg-panel px-6 py-7 shadow-xl">
+      <div ref={scope} className="rounded-lg bg-surface px-6 py-7 shadow-xl">
         <div aria-hidden className="relative mb-4 h-14 w-20 text-ink">
           <Cog data-gear="a" size={56} strokeWidth={1.6} className="absolute left-0 top-0" />
-          <Cog data-gear="b" size={34} strokeWidth={1.8} className="absolute bottom-0 right-0 text-signal-deep" />
+          <Cog data-gear="b" size={34} strokeWidth={1.8} className="absolute bottom-0 right-0 text-brand-strong" />
         </div>
-        <h2 id="loading-title" className="font-display text-2xl font-bold text-ink">
+        <h2 id="loading-title" className="text-xl font-semibold text-ink">
           Launching bot
         </h2>
         {/* Announced to screen readers as each step changes. */}
-        <p role="status" className="mt-1 min-h-6 text-steel">
+        <p role="status" className="mt-1 min-h-6 text-muted">
           {message}
         </p>
       </div>

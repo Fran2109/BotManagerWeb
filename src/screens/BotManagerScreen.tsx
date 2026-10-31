@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Search } from 'lucide-react';
 import { Bot, BotInput } from '../types';
 import { AVAILABLE_USERS, DEFAULT_PASSWORD } from '../constants/users';
 import { useBotExecution } from '../hooks/useBotExecution';
@@ -16,7 +17,8 @@ import {
   BotVariablesModal,
   BotNotFoundModal,
 } from '../components';
-import { ErrorState, LoadingState, useListEntrance } from '../components/ui';
+import { ErrorState, Panel, SkeletonRows, buttonStyles, useListEntrance } from '../components/ui';
+import { describeError } from '../lib/errors';
 
 const DEVICE_NOT_CONNECTED_MESSAGE =
   "The PC for this account is offline, so the bot can't start. Check it in Devices.";
@@ -139,7 +141,7 @@ export const BotManagerScreen = () => {
       if (error.response?.status === 404 || error.message?.includes('not found') || error.message?.includes('404')) {
         showBotNotFound(bot.name, userEmail);
       } else {
-        setExecutionResult({ botName: bot.name, errorMessage: error.message || 'Unknown error', errorType: 'execution' });
+        setExecutionResult({ botName: bot.name, errorMessage: describeError(error), errorType: 'execution' });
         setErrorModalVisible(true);
       }
     } finally {
@@ -160,9 +162,25 @@ export const BotManagerScreen = () => {
   const folderKey = currentPath[currentPath.length - 1]?.id;
   useListEntrance(listRef, !botsLoading && !botsError, folderKey);
 
+  // Search filters the current folder as you type; it resets when the folder changes.
+  const [query, setQuery] = useState('');
+  useEffect(() => setQuery(''), [folderKey]);
+  const normalize = (s: string) =>
+    s
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase();
+  const visibleBots = query.trim() ? bots.filter(b => normalize(b.name).includes(normalize(query.trim()))) : bots;
+  const folderCount = bots.filter(b => b.type === 'application/vnd.aa.directory').length;
+  const botCount = bots.length - folderCount;
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  const listSummary = query.trim()
+    ? `${plural(visibleBots.length, 'result')} for "${query.trim()}"`
+    : [folderCount && plural(folderCount, 'folder'), botCount && plural(botCount, 'bot')].filter(Boolean).join(', ');
+
   let content: React.ReactNode;
   if (botsLoading) {
-    content = <LoadingState title="Loading bots" />;
+    content = <SkeletonRows label="Loading bots" />;
   } else if (botsError) {
     content = (
       <ErrorState
@@ -175,14 +193,40 @@ export const BotManagerScreen = () => {
   } else {
     content = (
       <>
-        <Breadcrumb path={currentPath} onNavigate={navigateToBreadcrumb} />
+        {currentPath.length > 1 && <Breadcrumb path={currentPath} onNavigate={navigateToBreadcrumb} />}
         <div className="flex-1 overflow-y-auto">
           <div ref={listRef} className="mx-auto w-full max-w-3xl p-3 safe-bottom">
+            {bots.length > 0 && (
+              <div className="relative mb-3">
+                <Search
+                  aria-hidden
+                  size={18}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+                />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder="Search this folder"
+                  aria-label="Search bots and folders in this folder"
+                  enterKeyHint="search"
+                  autoComplete="off"
+                  className="min-h-11 w-full rounded-md border border-line bg-surface pl-10 pr-3 text-[15px] text-ink outline-none placeholder:text-muted focus:border-brand-strong focus:ring-2 focus:ring-brand/30"
+                />
+              </div>
+            )}
             {bots.length === 0 ? (
-              <p className="px-2 py-10 text-steel">This folder is empty.</p>
+              <p className="px-2 py-10 text-muted">This folder is empty.</p>
+            ) : visibleBots.length === 0 ? (
+              <div className="px-2 py-10">
+                <p className="text-ink">Nothing in this folder matches "{query.trim()}".</p>
+                <button onClick={() => setQuery('')} className={`${buttonStyles.ghost} -ml-2 mt-1 text-brand-strong`}>
+                  Clear search
+                </button>
+              </div>
             ) : (
-              <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
-                {bots.map(item => (
+              <Panel header={<span aria-live="polite">{listSummary}</span>}>
+                {visibleBots.map(item => (
                   <BotCard
                     key={item.id}
                     bot={item}
@@ -195,7 +239,7 @@ export const BotManagerScreen = () => {
                     onFolderPress={navigateToFolder}
                   />
                 ))}
-              </div>
+              </Panel>
             )}
           </div>
         </div>

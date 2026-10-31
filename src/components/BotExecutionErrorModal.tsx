@@ -27,14 +27,14 @@ export const BotExecutionErrorModal: React.FC<BotExecutionErrorModalProps> = ({
     <Modal visible={visible} onRequestClose={onConfirm} labelledBy="launch-error-title">
       <Sheet>
         <div role="alert" className="px-5 pb-5 pt-2">
-          <Icon size={30} className="text-stop" />
-          <h2 id="launch-error-title" className="mt-3 font-display text-2xl font-bold text-ink">
+          <Icon size={30} className="text-fail" />
+          <h2 id="launch-error-title" className="mt-3 text-xl font-semibold text-ink">
             {title}
           </h2>
-          <p className="mt-1 max-h-40 overflow-y-auto break-words text-steel">{errorMessage}</p>
+          <p className="mt-1 max-h-40 overflow-y-auto break-words text-muted">{errorMessage}</p>
 
           {errorType === 'device' && (
-            <div className="mt-4 rounded-xl border-l-4 border-amber bg-amber/10 px-4 py-3 text-sm text-ink">
+            <div className="mt-4 rounded-lg border-l-4 border-warn bg-warn/10 px-4 py-3 text-sm text-ink">
               <p className="font-semibold">To fix it</p>
               <ul className="mt-1 list-inside list-disc space-y-0.5 text-ink-soft">
                 <li>Check the PC is on and the Bot Agent is running</li>

@@ -1,7 +1,7 @@
 import React, { useId, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, CircleCheck, CircleSlash, CircleX, Loader } from 'lucide-react';
 import { ActivityItem } from '../types';
-import { Lamp, LampState, ProgressBar } from './ui';
+import { ProgressBar, StatusBadge, StatusTone } from './ui';
 import { gsap, motionDuration, useGSAP } from '../lib/motion';
 
 interface HistoryCardProps {
@@ -48,21 +48,40 @@ const formatDuration = (startTime: string, endTime: string): string => {
   }
 };
 
-const STATUS: Record<string, { label: string; lamp: LampState; color: string }> = {
-  COMPLETED: { label: 'Completed', lamp: 'on', color: '#1f9d55' },
-  FAILED: { label: 'Failed', lamp: 'off', color: '#d2382b' },
-  ERROR: { label: 'Error', lamp: 'off', color: '#d2382b' },
-  RUN_FAILED: { label: 'Failed', lamp: 'off', color: '#d2382b' },
-  UPDATE: { label: 'Running', lamp: 'wait', color: '#e08a00' },
-  RUNNING: { label: 'Running', lamp: 'wait', color: '#e08a00' },
-  STOPPED: { label: 'Stopped', lamp: 'idle', color: '#626d73' },
-  CANCELLED: { label: 'Cancelled', lamp: 'idle', color: '#626d73' },
-  ABORTED: { label: 'Aborted', lamp: 'idle', color: '#626d73' },
-  RUN_ABORTED: { label: 'Aborted', lamp: 'idle', color: '#626d73' },
+// Labels as the Control Room shows them in Activity > Historical.
+const OK = { tone: 'ok' as StatusTone, Icon: CircleCheck, color: '#1a7f37' };
+const FAIL = { tone: 'fail' as StatusTone, Icon: CircleX, color: '#cf222e' };
+const RUN = { tone: 'run' as StatusTone, Icon: Loader, color: '#0969da' };
+const STOP = { tone: 'neutral' as StatusTone, Icon: CircleSlash, color: '#59636e' };
+
+const STATUS: Record<string, { label: string } & typeof OK> = {
+  COMPLETED: { label: 'Completed', ...OK },
+  FAILED: { label: 'Run failed', ...FAIL },
+  ERROR: { label: 'Run failed', ...FAIL },
+  RUN_FAILED: { label: 'Run failed', ...FAIL },
+  UPDATE: { label: 'In progress', ...RUN },
+  RUNNING: { label: 'In progress', ...RUN },
+  STOPPED: { label: 'Stopped', ...STOP },
+  CANCELLED: { label: 'Cancelled', ...STOP },
+  ABORTED: { label: 'Run aborted', ...STOP },
+  RUN_ABORTED: { label: 'Run aborted', ...STOP },
 };
 
-const statusOf = (status: string) =>
-  STATUS[status.toUpperCase()] ?? { label: status, lamp: 'idle' as LampState, color: '#626d73' };
+const statusOf = (status: string) => STATUS[status.toUpperCase()] ?? { label: status, ...STOP };
+
+/** "Today, 08:52" / "Yesterday, 19:10" / "Oct 28, 14:03" for scanning a list. */
+const formatRelative = (dateString: string): string => {
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return dateString;
+  const tz = 'America/Argentina/Buenos_Aires';
+  const dayKey = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: tz });
+  const time = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: tz });
+  const now = new Date();
+  const yesterday = new Date(now.getTime() - 86400000);
+  if (dayKey(date) === dayKey(now)) return `Today, ${time}`;
+  if (dayKey(date) === dayKey(yesterday)) return `Yesterday, ${time}`;
+  return `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: tz })}, ${time}`;
+};
 
 /** One execution in the history log; details expand on tap. */
 export const HistoryCard: React.FC<HistoryCardProps> = ({ activity }) => {
@@ -95,18 +114,20 @@ export const HistoryCard: React.FC<HistoryCardProps> = ({ activity }) => {
         onClick={() => setExpanded(e => !e)}
         aria-expanded={expanded}
         aria-controls={detailsId}
-        className="flex w-full items-start gap-3 px-4 py-3.5 text-left active:bg-enamel"
+        className="flex w-full items-start gap-3 px-4 py-3.5 text-left active:bg-page"
       >
-        <Lamp state={status.lamp} className="mt-1.5" />
         <span className="min-w-0 flex-1">
           <span className="block break-words font-semibold text-ink">{activity.fileName}</span>
-          <span className="block text-sm text-steel">
-            {status.label}, {formatDateTime(activity.startDateTime)}
+          <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <StatusBadge tone={status.tone} icon={<status.Icon size={13} />}>
+              {status.label}
+            </StatusBadge>
+            <span className="text-sm text-muted">{formatRelative(activity.startDateTime)}</span>
           </span>
         </span>
         <ChevronDown
           size={20}
-          className={`mt-0.5 shrink-0 text-steel transition-transform ${expanded ? 'rotate-180' : ''}`}
+          className={`mt-0.5 shrink-0 text-muted transition-transform ${expanded ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -115,7 +136,7 @@ export const HistoryCard: React.FC<HistoryCardProps> = ({ activity }) => {
           <div className="space-y-3 px-4 pb-4 pl-[38px]">
             <div>
               <div className="mb-1 flex justify-between text-sm">
-                <span className="text-steel">
+                <span className="text-muted">
                   Line {activity.currentLine} of {activity.totalLines}
                 </span>
                 <span className="font-semibold text-ink">{progressPercentage}%</span>
@@ -125,45 +146,49 @@ export const HistoryCard: React.FC<HistoryCardProps> = ({ activity }) => {
 
             <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
               <div>
-                <dt className="text-steel">Device</dt>
+                <dt className="text-muted">Device</dt>
                 <dd className="break-words font-medium text-ink">{activity.deviceName}</dd>
               </div>
               <div>
-                <dt className="text-steel">Duration</dt>
+                <dt className="text-muted">Duration</dt>
                 <dd className="font-medium text-ink">
                   {formatDuration(activity.startDateTime, activity.endDateTime)}
                 </dd>
               </div>
               <div>
-                <dt className="text-steel">Ended</dt>
+                <dt className="text-muted">Started</dt>
+                <dd className="font-medium text-ink">{formatDateTime(activity.startDateTime)}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Ended</dt>
                 <dd className="font-medium text-ink">
                   {activity.endDateTime ? formatDateTime(activity.endDateTime) : 'N/A'}
                 </dd>
               </div>
               {activity.currentBotName && activity.currentBotName !== activity.fileName && (
                 <div>
-                  <dt className="text-steel">Last bot</dt>
+                  <dt className="text-muted">Last bot</dt>
                   <dd className="break-words font-medium text-ink">{activity.currentBotName}</dd>
                 </div>
               )}
               {activity.command && (
                 <div className="col-span-2">
-                  <dt className="text-steel">Last step</dt>
+                  <dt className="text-muted">Last step</dt>
                   <dd className="break-words font-medium text-ink">{activity.command}</dd>
                 </div>
               )}
               <div className="col-span-2">
-                <dt className="text-steel">Deployment ID</dt>
+                <dt className="text-muted">Deployment ID</dt>
                 <dd className="select-all break-all font-medium text-ink">{activity.deploymentId}</dd>
               </div>
               <div className="col-span-2">
-                <dt className="text-steel">Automation</dt>
+                <dt className="text-muted">Automation</dt>
                 <dd className="break-all text-ink-soft">{activity.automationName}</dd>
               </div>
             </dl>
 
             {activity.message && (
-              <p className="rounded-lg border-l-4 border-amber bg-amber/10 px-3 py-2 text-sm text-ink">
+              <p className="rounded-lg border-l-4 border-warn bg-warn/10 px-3 py-2 text-sm text-ink">
                 {activity.message}
               </p>
             )}

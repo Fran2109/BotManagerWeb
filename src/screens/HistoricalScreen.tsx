@@ -5,7 +5,7 @@ import { useExecutionHistory } from '../hooks/useExecutionHistory';
 import { useBackHandler } from '../navigation/backHandler';
 import { ScreenWrapper, HistoryCard, Paginator } from '../components';
 import { ScreenTitle } from '../components/ScreenWrapper';
-import { ErrorState, LoadingState, RefreshButton, buttonStyles, useListEntrance } from '../components/ui';
+import { ErrorState, Panel, RefreshButton, SkeletonRows, buttonStyles, initials, useListEntrance } from '../components/ui';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100, 200];
 
@@ -41,19 +41,22 @@ export const HistoricalScreen = () => {
       <ScreenWrapper>
         <div className="flex-1 overflow-y-auto">
           <div ref={listRef} className="mx-auto w-full max-w-3xl safe-bottom">
-            <ScreenTitle title="History" subtitle="Pick an account to see its past runs." />
-            <ul className="mx-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
+            <ScreenTitle title="Historical" subtitle="Pick an account to see its completed activity." />
+            <ul className="mx-3 divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
               {AVAILABLE_USERS.map(user => (
                 <li key={user.id} data-row>
                   <button
                     onClick={() => selectUser(user)}
-                    className="flex w-full items-center gap-3 px-4 py-4 text-left active:bg-enamel"
+                    className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left active:bg-page"
                   >
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-tint text-sm font-semibold text-brand-strong">
+                      {initials(user.label)}
+                    </span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-semibold text-ink">{user.label}</span>
-                      <span className="block truncate text-sm text-steel">{user.email}</span>
+                      <span className="block truncate text-sm text-muted">{user.email}</span>
                     </span>
-                    <ChevronRight size={20} className="text-steel" />
+                    <ChevronRight size={20} className="text-muted" />
                   </button>
                 </li>
               ))}
@@ -68,9 +71,9 @@ export const HistoricalScreen = () => {
   if (error) {
     body = <ErrorState title="Couldn't load the history" error={error} onRetry={refresh} />;
   } else if (loading && history.length === 0) {
-    body = <LoadingState title="Loading history" />;
+    body = <SkeletonRows label="Loading activity" />;
   } else if (history.length === 0) {
-    body = <p className="px-4 py-10 text-steel">{selectedUser.label} hasn't run any bots yet.</p>;
+    body = <p className="px-4 py-10 text-muted">No completed activity for {selectedUser.label} yet.</p>;
   } else {
     body = (
       <div
@@ -78,11 +81,11 @@ export const HistoricalScreen = () => {
         aria-busy={loading}
         className={`mx-auto mb-4 w-full max-w-3xl px-3 transition-opacity ${loading ? 'opacity-50' : ''}`}
       >
-        <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
+        <Panel header="Newest first. Tap a row for details.">
           {history.map(item => (
             <HistoryCard key={item.id} activity={item} />
           ))}
-        </div>
+        </Panel>
       </div>
     );
   }
@@ -96,7 +99,7 @@ export const HistoricalScreen = () => {
           </button>
           <ScreenTitle
             title={selectedUser.label}
-            subtitle="Past runs, newest first. Tap one for details."
+            subtitle={selectedUser.email}
             action={<RefreshButton onClick={refresh} busy={loading} busyLabel="Loading" />}
           />
         </div>

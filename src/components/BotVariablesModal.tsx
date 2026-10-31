@@ -15,7 +15,9 @@ import {
   buildLockedVariableInput,
   formatLockedDefaultDisplay,
 } from '../utils/botVariables';
-import { ErrorState, LoadingState, Modal, Switch } from './ui';
+import { ErrorState, LoadingState, Modal, Switch, buttonStyles } from './ui';
+import { Play, X } from 'lucide-react';
+import { describeError } from '../lib/errors';
 
 interface BotVariablesModalProps {
   visible: boolean;
@@ -26,7 +28,7 @@ interface BotVariablesModalProps {
 }
 
 const inputClass =
-  'w-full min-w-0 rounded-lg border border-line bg-white px-3.5 py-2.5 text-base text-ink outline-none transition placeholder:text-steel/60 focus:border-ink focus:ring-2 focus:ring-signal';
+  'w-full min-w-0 rounded-lg border border-line bg-white px-3.5 py-2.5 text-base text-ink outline-none transition placeholder:text-muted/60 focus:border-ink focus:ring-2 focus:ring-brand';
 
 const getDateTimeParts = (value?: string): { date: string; time: string } => {
   if (!value) {
@@ -190,7 +192,7 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
       setInputValues(initialValues);
     } catch (error: any) {
       console.error('Error loading bot variables:', error);
-      setError(error.message || 'Failed to load bot variables');
+      setError(describeError(error));
     } finally {
       setLoading(false);
     }
@@ -326,12 +328,12 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
     return (
       <div className="space-y-3">
         {constraint.locked ? (
-          <p className="text-sm text-steel">
+          <p className="text-sm text-muted">
             Every value is <span className="font-semibold text-ink">{constraint.subtype.toLowerCase()}</span>
           </p>
         ) : null}
         {entries.map((entry, index) => (
-          <fieldset key={`${variableName}-dict-${index}`} className="space-y-2 rounded-lg border border-line bg-enamel/50 p-3">
+          <fieldset key={`${variableName}-dict-${index}`} className="space-y-2 rounded-lg border border-line bg-page/50 p-3">
             <legend className="sr-only">Entry {index + 1}</legend>
             <input
               className={inputClass}
@@ -349,7 +351,7 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
                     aria-checked={entry.value.type === st}
                     onClick={() => setSubtype(index, st)}
                     className={`rounded-md px-2.5 py-1 text-sm font-medium capitalize transition-colors ${
-                      entry.value.type === st ? 'bg-ink text-panel' : 'border border-line bg-panel text-ink-soft'
+                      entry.value.type === st ? 'bg-ink text-surface' : 'border border-line bg-surface text-ink-soft'
                     }`}
                   >
                     {st.toLowerCase()}
@@ -361,7 +363,7 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
             <button
               onClick={() => removeRow(index)}
               disabled={entries.length <= 1}
-              className="text-sm font-semibold text-stop disabled:text-line"
+              className="text-sm font-semibold text-fail disabled:text-line"
             >
               Remove entry
             </button>
@@ -387,7 +389,7 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
     let field: React.ReactNode;
     if (varType === 'BOOLEAN') {
       field = (
-        <div className="flex items-center justify-between rounded-lg border border-line bg-enamel/50 px-4 py-3">
+        <div className="flex items-center justify-between rounded-lg border border-line bg-page/50 px-4 py-3">
           <span className="font-medium text-ink">{currentValue?.boolean ? 'True' : 'False'}</span>
           <Switch
             value={currentValue?.boolean || false}
@@ -442,7 +444,7 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
               aria-label={`${variable.name} time`}
             />
           </div>
-          <p className="text-sm text-steel">Buenos Aires time (UTC−3)</p>
+          <p className="text-sm text-muted">Buenos Aires time (UTC−3)</p>
         </div>
       );
     } else if (varType === 'DICTIONARY') {
@@ -450,7 +452,7 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
     } else {
       field = (
         <div className="rounded-lg border border-dashed border-line px-3 py-2.5">
-          <p className="text-sm text-steel">This app can't edit this type, so the bot's default is sent:</p>
+          <p className="text-sm text-muted">This app can't edit this type, so the bot's default is sent:</p>
           <p className="mt-1 break-words font-medium text-ink">{formatLockedDefaultDisplay(variable)}</p>
         </div>
       );
@@ -462,13 +464,13 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
           <label htmlFor={inputId} className="min-w-0 break-all font-semibold text-ink">
             {variable.name}
           </label>
-          <span className="shrink-0 text-sm text-steel">
+          <span className="shrink-0 text-sm text-muted">
             {variable.type.toLowerCase()}
             {!isKnownType ? ', fixed' : ''}
           </span>
         </div>
         {variable.description ? (
-          <p id={`${inputId}-desc`} className="-mt-1 mb-2 text-sm text-steel">
+          <p id={`${inputId}-desc`} className="-mt-1 mb-2 text-sm text-muted">
             {variable.description}
           </p>
         ) : null}
@@ -479,24 +481,24 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
 
   return (
     <Modal visible={visible} onRequestClose={onClose} variant="page" labelledBy="variables-title">
-      <div className="flex h-full flex-col bg-enamel safe-top safe-bottom">
-        <div className="flex items-center gap-2 bg-ink px-2 py-2 text-panel">
-          <button onClick={onClose} className="rounded-lg px-3 py-2 font-medium active:bg-white/10">
-            Cancel
-          </button>
-          <div className="min-w-0 flex-1 text-center">
-            <h2 id="variables-title" className="font-display text-lg font-bold leading-tight">
-              Bot inputs
-            </h2>
-            {bot && <p className="truncate text-xs text-panel/60">{bot.name}</p>}
+      <div className="flex h-full flex-col bg-page safe-top safe-bottom">
+        <div className="bg-nav text-white">
+          <div className="flex items-center gap-1 px-2 py-2">
+            <button
+              onClick={onClose}
+              aria-label="Cancel"
+              className="flex size-11 shrink-0 items-center justify-center rounded-md active:bg-white/10"
+            >
+              <X size={22} />
+            </button>
+            <div className="min-w-0 flex-1">
+              <h2 id="variables-title" className="text-[15px] font-semibold leading-tight">
+                Bot inputs
+              </h2>
+              {bot && <p className="truncate text-sm text-white/60">{bot.name}</p>}
+            </div>
           </div>
-          <button
-            onClick={handleConfirm}
-            disabled={loading || !!error}
-            className="push-button rounded-lg px-4 py-2 font-semibold"
-          >
-            Run
-          </button>
+          <div className="brand-line h-0.5" />
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -505,18 +507,27 @@ export const BotVariablesModal: React.FC<BotVariablesModalProps> = ({
           ) : error ? (
             <ErrorState title="Couldn't load the inputs" error={error} onRetry={loadBotVariables} />
           ) : variables.length === 0 ? (
-            <div className="flex flex-1 flex-col items-start justify-center gap-4 p-6">
-              <p className="text-steel">This bot doesn't take any inputs.</p>
-              <button onClick={handleConfirm} className="push-button rounded-lg px-5 py-3 font-semibold">
-                Run
-              </button>
-            </div>
+            <p className="p-6 text-muted">This bot doesn't take any inputs.</p>
           ) : (
-            <div className="m-4 divide-y divide-line rounded-xl border border-line bg-panel">
-              <p className="px-4 py-3 text-sm text-steel">Defaults come from the bot. Change what you need, then Run.</p>
+            <div className="m-3 divide-y divide-line rounded-lg border border-line bg-surface">
+              <p className="px-4 py-3 text-sm text-muted">
+                Defaults come from the bot. Change what you need, then run it.
+              </p>
               {variables.map(renderVariableInput)}
             </div>
           )}
+        </div>
+
+        {/* Main action pinned within thumb reach, below the form it submits. */}
+        <div className="border-t border-line bg-surface p-3">
+          <button
+            onClick={handleConfirm}
+            disabled={loading || !!error}
+            className={`${buttonStyles.primary} w-full`}
+          >
+            <Play size={16} fill="currentColor" />
+            Run bot now
+          </button>
         </div>
       </div>
     </Modal>
