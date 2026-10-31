@@ -6,13 +6,23 @@ import { Lamp, Modal, Sheet, Switch, buttonStyles } from './ui';
 import { ensureNotifications } from '../lib/runTracker';
 import { isFavorite, toggleFavorite, useFavorites } from '../lib/launchHistory';
 
+// Both switches are remembered between launches.
 const NOTIFY_PREF_KEY = 'botmanager:notify-progress';
+const BACKGROUND_PREF_KEY = 'botmanager:run-in-background';
 
-const readNotifyPref = () => {
+const readPref = (key: string) => {
   try {
-    return localStorage.getItem(NOTIFY_PREF_KEY) === '1';
+    return localStorage.getItem(key) === '1';
   } catch {
     return false;
+  }
+};
+
+const savePref = (key: string, on: boolean) => {
+  try {
+    localStorage.setItem(key, on ? '1' : '0');
+  } catch {
+    // Not remembered; the option still applies to this launch.
   }
 };
 
@@ -40,16 +50,15 @@ export const UserSelectionModal: React.FC<UserSelectionModalProps> = ({
   onSchedule,
 }) => {
   const { usersWithDeviceStatus, checkDevicesStatus } = useDeviceStatus();
-  const [hideBotAgentUi, setHideBotAgentUi] = useState(false);
-  // Remembered between launches, unlike "Run in background".
-  const [notifyProgress, setNotifyProgress] = useState(readNotifyPref);
+  const [hideBotAgentUi, setHideBotAgentUi] = useState(() => readPref(BACKGROUND_PREF_KEY));
+  const [notifyProgress, setNotifyProgress] = useState(() => readPref(NOTIFY_PREF_KEY));
   const [notifyBlocked, setNotifyBlocked] = useState(false);
   const favorites = useFavorites();
   const favorite = !!selectedBot && isFavorite(favorites, selectedBot);
 
   useEffect(() => {
     if (visible) {
-      setHideBotAgentUi(initialOptions?.hideBotAgentUi ?? false);
+      setHideBotAgentUi(initialOptions?.hideBotAgentUi ?? readPref(BACKGROUND_PREF_KEY));
       if (initialOptions) setNotifyProgress(initialOptions.notifyProgress);
       setNotifyBlocked(false);
     }
@@ -63,11 +72,12 @@ export const UserSelectionModal: React.FC<UserSelectionModalProps> = ({
     setNotifyBlocked(on && !allowed);
     const next = on && allowed;
     setNotifyProgress(next);
-    try {
-      localStorage.setItem(NOTIFY_PREF_KEY, next ? '1' : '0');
-    } catch {
-      // Not remembered; the option still applies to this launch.
-    }
+    savePref(NOTIFY_PREF_KEY, next);
+  };
+
+  const changeBackground = (on: boolean) => {
+    setHideBotAgentUi(on);
+    savePref(BACKGROUND_PREF_KEY, on);
   };
 
   useEffect(() => {
@@ -112,7 +122,7 @@ export const UserSelectionModal: React.FC<UserSelectionModalProps> = ({
 
         <div className="mx-5 divide-y divide-line rounded-lg border border-line bg-page/50 px-4">
           <div className="py-2">
-            <Switch value={hideBotAgentUi} onValueChange={setHideBotAgentUi} hint="The bot runs without opening its window on the PC">
+            <Switch value={hideBotAgentUi} onValueChange={changeBackground} hint="The bot runs without opening its window on the PC">
               Run in background
             </Switch>
           </div>
