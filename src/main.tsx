@@ -23,6 +23,14 @@ if ('switch' in HTMLInputElement.prototype) {
   document.head.append(script);
 }
 
+// End-to-end test hook, only in builds made with VITE_E2E=1 (stripped otherwise): lets a
+// test follow an existing deployment without launching a bot.
+if (import.meta.env.VITE_E2E === '1') {
+  void import('./lib/runTracker').then(m => {
+    (window as unknown as { __e2e: unknown }).__e2e = { trackRun: m.trackRun };
+  });
+}
+
 // No StrictMode: its double-invoked effects would fire duplicate logins and polling,
 // which the React Native app never did.
 createRoot(document.getElementById('root')!).render(<App />);

@@ -228,6 +228,9 @@ const getBaseURLByUsername = (username: string): string => {
     }
 };
 
+/** Control Room base URL for a user (for native code, which can't use axios defaults). */
+export const getControlRoomUrl = (username: string): string => getBaseURLByUsername(username);
+
 // Configurar baseURL según el usuario
 const configureBaseURL = (username: string): void => {
     axios.defaults.baseURL = getBaseURLByUsername(username);

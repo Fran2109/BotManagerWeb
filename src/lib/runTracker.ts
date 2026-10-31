@@ -1,7 +1,7 @@
 import axios from 'axios';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { getDeployStatus, getToken } from '../Functions';
+import { getControlRoomUrl, getDeployStatus, getToken } from '../Functions';
 import { DEFAULT_PASSWORD } from '../constants/users';
 import type { RouteName } from '../navigation/drawerContext';
 
@@ -20,7 +20,26 @@ import type { RouteName } from '../navigation/drawerContext';
  * - expired token: the axios interceptor in Functions.ts logs in again transparently;
  * - credentials rejected even after logging in again: stop after a few tries and say so;
  * - Control Room errors (5xx): keep retrying with growing pauses for up to 30 minutes.
+ *
+ * On Android the same logic runs natively in RunTrackerService (a foreground service), so it
+ * keeps working with the app minimized or closed; this JavaScript tracker is the fallback
+ * used on the web.
  */
+
+interface RunTrackerNative {
+  track(options: {
+    deploymentId: string;
+    botName: string;
+    userEmail: string;
+    password: string;
+    baseUrl: string;
+    token: string;
+  }): Promise<void>;
+  getLaunchRoute(): Promise<{ route: string | null }>;
+  addListener(event: 'openRoute', handler: (data: { route: string }) => void): Promise<{ remove: () => void }>;
+}
+
+const RunTrackerNative = registerPlugin<RunTrackerNative>('RunTracker');
 
 interface TrackedRun {
   deploymentId: string;
@@ -309,6 +328,22 @@ const pollAllNow = () => {
 
 /** Starts following a deployment and shows its progress notification. */
 export const trackRun = async (deploymentId: string, userEmail: string, botName: string) => {
+  if (isAndroid()) {
+    // Native foreground service: keeps following the bot with the app in the background.
+    try {
+      await RunTrackerNative.track({
+        deploymentId,
+        botName,
+        userEmail,
+        password: DEFAULT_PASSWORD,
+        baseUrl: getControlRoomUrl(userEmail),
+        token: await getToken(userEmail, DEFAULT_PASSWORD),
+      });
+      return;
+    } catch (err) {
+      console.warn('Native tracking unavailable, following from the app instead:', err);
+    }
+  }
   if (runs.has(deploymentId)) return;
   const run: TrackedRun = { deploymentId, userEmail, botName, startedAt: Date.now(), errors: 0 };
   runs.set(deploymentId, run);
@@ -323,6 +358,13 @@ export const trackRun = async (deploymentId: string, userEmail: string, botName:
  */
 export const initRunTracker = async (onOpen: (route: RouteName) => void) => {
   openHandler = onOpen;
+  if (isAndroid()) {
+    // Taps on the native service's notifications: while the app runs, and on cold start.
+    RunTrackerNative.addListener('openRoute', ({ route }) => openHandler?.(route as RouteName)).catch(() => {});
+    RunTrackerNative.getLaunchRoute()
+      .then(({ route }) => route && openHandler?.(route as RouteName))
+      .catch(() => {});
+  }
   // Back online: report what happened while offline without waiting for the next retry.
   window.addEventListener('online', pollAllNow);
   LocalNotifications.addListener('localNotificationActionPerformed', action => {
